@@ -10,7 +10,7 @@ import { ASC_TEXTS, MC_TEXTS, NODE_AXIS, LILITH_IN_SIGN, SELENA_IN_SIGN, PARS_IN
 import { pairText, PLANET_ABOUT, ELEMENT_TEXTS, CROSS_TEXTS, KARMIC_INTRO } from './data/texts_pairs.js';
 import { searchLocalCities, geocodeOnline } from './geo.js';
 import { dstSuggested } from './data/cities.js';
-import { drawWheel } from './wheel.js?v=2';
+import { drawWheel } from './wheel.js?v=3';
 import { buildSummary } from './summary.js?v=1';
 
 const $ = s => document.querySelector(s);
@@ -114,12 +114,9 @@ function calc(form) {
   pts.push({ id: 'Vertex', lon: h.vertex, lat: 0, retro: false, house: houseOf(h.vertex, h.cusps) });
   pts.push({ id: 'SouthNode', lon: norm360(pts.find(p => p.id === 'NorthNode').lon + 180), lat: 0, retro: true, house: houseOf(norm360(pts.find(p => p.id === 'NorthNode').lon + 180), h.cusps) });
 
-  const aspectPts = pts.filter(p => MAIN_PLANETS.includes(p.id) || p.id === 'Chiron' || p.id === 'NorthNode');
+  const aspectPts = [...pts, { id: 'ASC', lon: h.asc }, { id: 'MC', lon: h.mc }];
   const aspects = findAspects(aspectPts);
-  const angleAspects = findAspects([
-    ...MAIN_PLANETS.map(id => aspectPts.find(p => p.id === id)),
-    { id: 'ASC', lon: h.asc }, { id: 'MC', lon: h.mc },
-  ]).filter(a => a.a === 'ASC' || a.a === 'MC' || a.b === 'ASC' || a.b === 'MC');
+  const angleAspects = aspects.filter(a => a.a === 'ASC' || a.a === 'MC' || a.b === 'ASC' || a.b === 'MC');
   const configs = findConfigurations(MAIN_PLANETS, aspects);
 
   // сила/гармония
@@ -270,7 +267,7 @@ function renderSchema(c) {
     {
       t: 'Зелёные линии в центре — гармоничные аспекты (помощь)', focus: 'aspects', aspects: good,
       paras: [
-        'Зелёные линии соединяют планеты, которые дружат и помогают друг другу: трин (120°) — талант, данный от природы, секстиль (60°) — возможности, которые легко открываются.',
+        'Зелёные линии соединяют планеты, которые дружат и помогают друг другу: трин (120°) — талант, данный от природы, секстиль (60°) — возможности, которые легко открываются. Бирюзовые линии — квинконс (150°): тонкая настройка, требующая маленьких поправок.',
         'Чем больше зелёного у планеты — тем легче она работает.',
         good.length ? `В вашей карте ${good.length} зелёных аспектов — например, ${good[0].aspect.name} между ${nm(good[0].a)} и ${nm(good[0].b)}.` : 'В вашей карте зелёных аспектов мало — всё даётся трудом, но и закалка сильнее.',
       ],
@@ -339,11 +336,46 @@ function renderHouses(c) {
   $('#tab-houses').innerHTML = cards;
 }
 
+// Порядок точек в аспектной сетке (как на geocult)
+export const GRID_POINTS = [...MAIN_PLANETS, 'Chiron', 'Lilith', 'Selena', 'NorthNode', 'SouthNode', 'ParsFortuna', 'Vertex', 'ASC', 'MC'];
+
+function aspectGrid(c) {
+  const map = new Map();
+  for (const a of c.aspects) map.set(`${a.a}|${a.b}`, a);
+  const pts = GRID_POINTS.map(id => id === 'ASC' ? { id, lon: c.h.asc } : id === 'MC' ? { id, lon: c.h.mc } : c.pts.find(p => p.id === id)).filter(Boolean);
+  const cellClass = a => a.aspect.id === 'conjunction' ? 'ag-conj' : a.aspect.id === 'quincunx' ? 'ag-quin' : a.aspect.nature > 0 ? 'ag-pos' : 'ag-neg';
+  let html = '<div class="agrid-wrap"><table class="agrid"><thead><tr><th></th>';
+  for (let j = 0; j < pts.length - 1; j++)
+    html += `<th><span style="color:${PLANETS[pts[j].id].color}">${gl(pts[j].id)}</span>${pts[j].retro ? '<span class="retro">R</span>' : ''}</th>`;
+  html += '</tr></thead><tbody>';
+  for (let i = 1; i < pts.length; i++) {
+    html += `<tr><th><span style="color:${PLANETS[pts[i].id].color}">${gl(pts[i].id)}</span>${pts[i].retro ? '<span class="retro">R</span>' : ''}</th>`;
+    for (let j = 0; j < i; j++) {
+      const a = map.get(`${pts[j].id}|${pts[i].id}`) || map.get(`${pts[i].id}|${pts[j].id}`);
+      html += a
+        ? `<td class="${cellClass(a)}" title="${nm(a.a)} — ${nm(a.b)}: ${a.aspect.name}, орб ${a.orb}°">${a.aspect.glyph}</td>`
+        : '<td></td>';
+    }
+    html += '</tr>';
+  }
+  html += '</tbody></table></div>';
+  html += `<div class="agrid-legend">
+    <span class="ag-conj">☌ Соединение 0°</span>
+    <span class="ag-pos">△ Тригон 120° · ⚹ Секстиль 60° (гармоничные)</span>
+    <span class="ag-quin">⚻ Квинконс 150° (настройка)</span>
+    <span class="ag-neg">□ Квадрат 90° · ☍ Оппозиция 180° (напряжённые)</span>
+    <span class="agrid-note">Наведите на ячейку — увидите орб. Орбы: до 8° для Солнца и Луны, 6–7° для планет, 2–3° для фиктивных точек.</span>
+  </div>`;
+  return html;
+}
+
 function renderAspects(c) {
   const rows = c.aspects.map(a => `<tr><td>${gl(a.a)} ${nm(a.a)}</td><td style="color:${a.aspect.nature < 0 ? 'var(--bad)' : a.aspect.nature > 0 ? 'var(--good)' : 'var(--gold)'}">${a.aspect.glyph} ${a.aspect.name}</td><td>${gl(a.b)} ${nm(a.b)}</td><td>${a.orb}°</td></tr>`).join('');
   const confs = c.configs.map(cf => `<div class="blk"><span class="blk-label tip">${cf.type}</span>
     <p><b>${cf.planets.map(p => `${gl(p)} ${nm(p)}`).join(' — ')}</b></p><p>${esc(CONFIG_TEXTS[cf.type] || '')}</p></div>`).join('');
   $('#tab-aspects').innerHTML = `
+    <div class="card" open><summary><div class="card-head"><span class="card-title">Аспектная сетка</span><span class="card-sub">все взаимные аспекты точек карты, как в профессиональных программах</span></div><span class="card-chevron">▾</span></summary>
+      <div class="card-body">${aspectGrid(c)}</div></div>
     <div class="card" open><summary><div class="card-head"><span class="card-title">Все аспекты</span><span class="card-sub">${c.aspects.length} шт., сортировка по орбу</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><table class="ntable"><thead><tr><th>Планета</th><th>Аспект</th><th>Планета</th><th>Орб</th></tr></thead><tbody>${rows}</tbody></table></div></div>
     ${confs ? `<div class="card" open><summary><div class="card-head"><span class="card-title">Конфигурации</span></div><span class="card-chevron">▾</span></summary><div class="card-body">${confs}</div></div>` : ''}`;
@@ -443,7 +475,7 @@ $('#btnPdf').onclick = async () => {
   const btn = $('#btnPdf');
   btn.disabled = true; btn.textContent = 'Готовим PDF…';
   try {
-    const { downloadPdf } = await import('./pdf.js?v=1');
+    const { downloadPdf } = await import('./pdf.js?v=2');
     await downloadPdf(lastChart, $('#city').value, $('#wheelSvg'));
     toast('PDF сохранён');
   } catch (e) {
