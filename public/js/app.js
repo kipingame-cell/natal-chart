@@ -475,7 +475,7 @@ $('#btnPdf').onclick = async () => {
   const btn = $('#btnPdf');
   btn.disabled = true; btn.textContent = 'Готовим PDF…';
   try {
-    const { downloadPdf } = await import('./pdf.js?v=4');
+    const { downloadPdf } = await import('./pdf.js?v=5');
     await downloadPdf(lastChart, $('#city').value, $('#wheelSvg'));
     toast('PDF сохранён');
   } catch (e) {
