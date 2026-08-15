@@ -6,7 +6,7 @@ import { PLANET_IN_SIGN, RETRO_TEXT } from './data/texts_planet_sign.js';
 import { PLANET_IN_HOUSE } from './data/texts_planet_house.js';
 import { ASC_TEXTS, MC_TEXTS, NODE_AXIS, LILITH_IN_SIGN, SELENA_IN_SIGN, PARS_IN_HOUSE, VERTEX_TEXT, CONFIG_TEXTS, ASPECT_NATURE } from './data/texts_angles.js';
 import { pairText, PLANET_ABOUT, KARMIC_INTRO } from './data/texts_pairs.js';
-import { buildSummary, MAIN_PLANETS } from './summary.js';
+import { buildSummary, MAIN_PLANETS } from './summary.js?v=2';
 
 const SITE_URL = 'https://kipingame-cell.github.io/natal-chart/';
 const CDN = [
@@ -232,7 +232,8 @@ export async function downloadPdf(c, cityName, svg) {
 
   const f = c.form;
   const pts = id => c.pts.find(p => p.id === id);
-  const fmt = lon => fmtDeg(lon).text;
+  // глиф знака в pdfmake-шрифтах превращается в «квадрат» — оставляем только текст
+  const fmt = lon => fmtDeg(lon).text.replace(/^[^\p{L}\p{N}]+/u, '').trim();
   const degOnly = lon => `${Math.floor(lon % 30)}°${String(Math.round((lon % 30 % 1) * 60)).padStart(2, '0')}′`;
   const P = id => PLANETS[id].name;
   const sgn = lon => SIGNS[Math.floor(lon / 30)];
@@ -244,8 +245,16 @@ export async function downloadPdf(c, cityName, svg) {
     if (nodes.length && nodes[0].text && typeof nodes[0].text === 'string' && !nodes[0].table) {
       return [{ stack: [...head, nodes[0]], unbreakable: true }, ...nodes.slice(1)];
     }
+    if (nodes.length && nodes[0].image) {
+      return [{ stack: [...head, nodes[0]], unbreakable: true }, ...nodes.slice(1)];
+    }
     return [{ stack: head, unbreakable: true }, ...nodes];
   };
+  // раздел-таблица: заголовок + разделитель + таблица в одном неразрывном блоке
+  const secTable = (title, tableNode, after = []) => [
+    { stack: [{ text: title.toUpperCase(), style: 'h2' }, { svg: RULE_SVG(90, 8), margin: [0, 0, 0, 7] }, tableNode], unbreakable: true },
+    ...after,
+  ];
   const par = (t, opt = {}) => ({ text: t, style: 'par', ...opt });
   const li = t => ({ text: t, style: 'par', margin: [10, 0, 0, 3] });
   const cardTitle = (t, sub) => ({
@@ -288,18 +297,18 @@ export async function downloadPdf(c, cityName, svg) {
       td(s ? s.harmony : '—', { alignment: 'center', color: s ? (s.harmony >= 0 ? GOOD : BAD) : '#111' }),
     ]);
   }
-  content.push(...sec('Планеты: положения', [
+  content.push(...secTable('Планеты: положения',
     { table: { headerRows: 1, widths: ['*', 'auto', 'auto', 30, 20, 34, 36], body: pRows }, layout: TABLE_LAYOUT },
-  ]));
+  ));
 
   /* ---- дома ---- */
   const hRows = [[th('Дом'), th('Куспид'), th('Знак')]];
   c.h.cusps.slice(1).forEach((cu, i) => hRows.push([
     td(`${i + 1}${i === 0 ? ' (ASC)' : i === 9 ? ' (MC)' : ''}`), td(fmt(cu)), td(sgn(cu).name),
   ]));
-  content.push(...sec('Дома (Плацидус)', [
+  content.push(...secTable('Дома (Плацидус)',
     { table: { headerRows: 1, widths: ['auto', '*', 'auto'], body: hRows }, layout: TABLE_LAYOUT },
-  ]));
+  ));
 
   /* ---- асцендент и MC ---- */
   content.push(...sec('Асцендент и Середина неба', [
@@ -346,16 +355,26 @@ export async function downloadPdf(c, cityName, svg) {
   content.push(...sec('Планеты: интерпретация', det));
 
   /* ---- аспектная сетка и список ---- */
-  const asp = [];
-  if (gridPng) asp.push({ image: gridPng, width: 420, alignment: 'center', margin: [0, 2, 0, 6] });
-  asp.push(par('Золотые — соединения, зелёные и бирюзовые — гармоничные аспекты, красные — напряжённые. Орбы: до 8° для Солнца и Луны, 6–7° для планет, 2–3° для фиктивных точек.', 'hint'));
   const aRows = [[th('Планета'), th('Аспект'), th('Планета'), th('Орб', 'center')]];
   for (const a of c.aspects) aRows.push([
     td(P(a.a)), td(a.aspect.name, { color: a.aspect.nature < 0 ? BAD : a.aspect.nature > 0 ? GOOD : GOLD }),
     td(P(a.b)), td(a.orb + '°', { alignment: 'center' }),
   ]);
-  asp.push({ table: { headerRows: 1, widths: ['*', 'auto', '*', 40], body: aRows }, layout: TABLE_LAYOUT });
-  content.push(...sec('Аспектная сетка', asp));
+  const aspTable = { table: { headerRows: 1, widths: ['*', 'auto', '*', 40], body: aRows }, layout: TABLE_LAYOUT };
+  const aspHint = par('Золотые — соединения, зелёные и бирюзовые — гармоничные аспекты, красные — напряжённые. Орбы: до 8° для Солнца и Луны, 6–7° для планет, 2–3° для фиктивных точек.', 'hint');
+  if (gridPng) {
+    content.push(
+      { stack: [
+        { text: 'АСПЕКТНАЯ СЕТКА', style: 'h2' },
+        { svg: RULE_SVG(90, 8), margin: [0, 0, 0, 7] },
+        { image: gridPng, width: 420, alignment: 'center', margin: [0, 2, 0, 6] },
+        aspHint,
+      ], unbreakable: true },
+      aspTable,
+    );
+  } else {
+    content.push(...secTable('Аспектная сетка', aspTable, [aspHint]));
+  }
 
   /* ---- конфигурации ---- */
   if (c.configs.length) {
@@ -386,8 +405,11 @@ export async function downloadPdf(c, cityName, svg) {
   kar.push({ stack: [cardTitle(`Вертекс — ${fmt(vtx.lon)}, ${vtx.house}-й дом`), par(VERTEX_TEXT)], unbreakable: true });
   const retros = c.pts.filter(p => p.retro && RETRO_TEXT[p.id]);
   if (retros.length) {
-    kar.push({ text: 'РЕТРОГРАДНЫЕ ПЛАНЕТЫ', style: 'lab' });
-    for (const p of retros) kar.push(par(`${P(p.id)} R: ${RETRO_TEXT[p.id]}`));
+    kar.push({
+      stack: [{ text: 'РЕТРОГРАДНЫЕ ПЛАНЕТЫ', style: 'lab' }, par(`${P(retros[0].id)} R: ${RETRO_TEXT[retros[0].id]}`)],
+      unbreakable: true,
+    });
+    for (const p of retros.slice(1)) kar.push(par(`${P(p.id)} R: ${RETRO_TEXT[p.id]}`));
   }
   content.push(...sec('Кармические показатели', kar));
 
@@ -400,10 +422,10 @@ export async function downloadPdf(c, cityName, svg) {
       td(s.harmony, { alignment: 'center', color: s.harmony >= 0 ? GOOD : BAD }), td(s.dignity.label),
     ]);
   }
-  content.push(...sec('Сила и гармония планет (астродины)', [
+  content.push(...secTable('Сила и гармония планет (астродины)',
     { table: { headerRows: 1, widths: ['*', 44, 56, '*'], body: dRows }, layout: TABLE_LAYOUT },
-    par('Упрощённая модель: сила = достоинство + дом + аспектная связанность; гармония = достоинство + баланс гармоничных и напряжённых аспектов.', 'hint'),
-  ]));
+    [par('Упрощённая модель: сила = достоинство + дом + аспектная связанность; гармония = достоинство + баланс гармоничных и напряжённых аспектов.', 'hint')],
+  ));
 
   /* ---- задняя страница ---- */
   content.push({ svg: SUN_SVG(40), alignment: 'center', margin: [0, 90, 0, 14], pageBreak: 'before' });
