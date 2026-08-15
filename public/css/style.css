@@ -139,6 +139,21 @@ button,input,select{font:inherit;color:inherit}
 .schema-wheel{width:100%;max-width:340px;margin:0 auto}
 .schema-wheel svg{width:100%;height:auto;display:block}
 
+/* Аспектная сетка */
+.agrid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.agrid{border-collapse:collapse;margin:0 auto}
+.agrid th,.agrid td{width:30px;height:30px;text-align:center;vertical-align:middle;
+  border:1px solid rgba(255,255,255,.07);font-size:15px;padding:0}
+.agrid th{background:rgba(255,255,255,.03);font-weight:400;white-space:nowrap}
+.agrid th .retro{font-size:9px;vertical-align:super;margin-left:1px}
+.agrid td{background:rgba(255,255,255,.015)}
+.ag-conj{color:var(--gold)}
+.ag-pos{color:var(--good)}
+.ag-quin{color:var(--teal)}
+.ag-neg{color:var(--bad)}
+.agrid-legend{display:flex;flex-direction:column;gap:4px;margin-top:12px;font-size:13px;justify-content:center}
+.agrid-note{color:var(--text-dim);font-size:12px}
+
 @media (max-width:640px){
   .site-header{padding:13px 14px;flex-direction:column;align-items:flex-start;gap:3px}
   .logo{font-size:17px}
