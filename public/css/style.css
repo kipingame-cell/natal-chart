@@ -1,3 +1,11 @@
+/* Шрифт с полным набором астрологических глифов (♃♄♅♆♇⚷☊⚸☌⚹⚻☍ и др.).
+   Ставится в конец стека: обычный текст остаётся в Segoe UI/system-ui,
+   недостающие значки подставляются из DejaVu автоматически. */
+@font-face{
+  font-family:'DejaVu Sans';
+  src:url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf') format('truetype');
+  font-weight:normal;font-style:normal;font-display:swap;
+}
 :root{
   --bg:#0a0c16; --bg-2:#11142a; --bg-3:#1a1e3d;
   --glass:rgba(255,255,255,.04); --line:rgba(255,255,255,.08);
@@ -8,7 +16,7 @@
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:radial-gradient(1200px 800px at 70% -10%,#1c2044 0%,var(--bg) 55%) fixed,var(--bg);color:var(--text);
-  font:16px/1.55 "Segoe UI",system-ui,-apple-system,sans-serif;min-height:100vh}
+  font:16px/1.55 "Segoe UI",system-ui,-apple-system,"DejaVu Sans",sans-serif;min-height:100vh}
 button,input,select{font:inherit;color:inherit}
 
 .site-header{display:flex;align-items:baseline;gap:14px;padding:18px 22px;border-bottom:1px solid var(--line);
