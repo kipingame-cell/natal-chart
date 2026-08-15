@@ -234,7 +234,8 @@ export async function downloadPdf(c, cityName, svg) {
   const pts = id => c.pts.find(p => p.id === id);
   // глиф знака в pdfmake-шрифтах превращается в «квадрат» — оставляем только текст
   const fmt = lon => fmtDeg(lon).text.replace(/^[^\p{L}\p{N}]+/u, '').trim();
-  const degOnly = lon => `${Math.floor(lon % 30)}°${String(Math.round((lon % 30 % 1) * 60)).padStart(2, '0')}′`;
+  // градусы — в точности как на сайте (тот же fmtDeg: минуты отсечением, секунды округлением)
+  const degOnly = lon => fmt(lon).replace(sgn(lon).name, '').trim();
   const P = id => PLANETS[id].name;
   const sgn = lon => SIGNS[Math.floor(lon / 30)];
   const dateLine = `${String(f.d).padStart(2, '0')}.${String(f.m).padStart(2, '0')}.${f.y}, ${String(f.hh).padStart(2, '0')}:${String(f.mm).padStart(2, '0')} (UTC${f.utc >= 0 ? '+' : ''}${f.utc}) · ${cityName}`;
