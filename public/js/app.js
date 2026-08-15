@@ -10,7 +10,8 @@ import { ASC_TEXTS, MC_TEXTS, NODE_AXIS, LILITH_IN_SIGN, SELENA_IN_SIGN, PARS_IN
 import { pairText, PLANET_ABOUT, ELEMENT_TEXTS, CROSS_TEXTS, KARMIC_INTRO } from './data/texts_pairs.js';
 import { searchLocalCities, geocodeOnline } from './geo.js';
 import { dstSuggested } from './data/cities.js';
-import { drawWheel } from './wheel.js?v=1';
+import { drawWheel } from './wheel.js?v=2';
+import { buildSummary } from './summary.js?v=1';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -149,6 +150,7 @@ function render(chart) {
   });
 
   renderOverview(chart);
+  renderSummary(chart);
   renderPlanets(chart);
   renderAngles(chart);
   renderHouses(chart);
@@ -156,6 +158,7 @@ function render(chart) {
   renderKarma(chart);
   renderDyn(chart);
   renderElements(chart);
+  renderSchema(chart);
   document.querySelectorAll('.chip')[0]?.click();
   $('#results').scrollIntoView({ behavior: 'smooth' });
 }
@@ -209,6 +212,100 @@ function planetSection(c, id) {
       ${p.retro && RETRO_TEXT[id] ? `<div class="blk"><span class="blk-label warn">Ретроградность</span><p>${esc(RETRO_TEXT[id])}</p></div>` : ''}
       ${own.length ? `<div class="blk"><span class="blk-label tip">Аспекты</span>${aspRows}</div>` : ''}
     </div></div>`;
+}
+
+function renderSummary(c) {
+  const blocks = buildSummary(c);
+  $('#tab-summary').innerHTML = `
+    <p class="hint">Короткое резюме всей карты простым языком: кто вы, в чём сила, над чем работать и куда движется судьба. Подробности — в остальных вкладках.</p>
+    ${blocks.map(b => `<div class="card" open><summary><div class="card-head"><span class="card-title">${b.head}</span></div><span class="card-chevron">▾</span></summary>
+      <div class="card-body">${b.paras.map(p => `<p>${esc(p)}</p>`).join('')}</div></div>`).join('')}`;
+}
+
+// Вкладка «Схема»: объяснение каждого элемента колеса с отдельной мини-схемой
+function renderSchema(c) {
+  const wheelPts = c.pts.filter(p => [...MAIN_PLANETS, 'Chiron', 'NorthNode'].includes(p.id));
+  const base = { points: wheelPts, cusps: c.h.cusps, asc: c.h.asc, mc: c.h.mc };
+  const sun = c.pts.find(p => p.id === 'Sun'), moon = c.pts.find(p => p.id === 'Moon');
+  const sunSign = SIGNS[Math.floor(sun.lon / 30)], moonSign = SIGNS[Math.floor(moon.lon / 30)];
+  const good = c.aspects.filter(a => a.aspect.nature > 0);
+  const bad = c.aspects.filter(a => a.aspect.nature < 0);
+  const conj = c.aspects.filter(a => a.aspect.id === 'conjunction');
+  const retroPts = wheelPts.filter(p => p.retro);
+  const items = [
+    {
+      t: 'Цветное кольцо снаружи — это 12 знаков зодиака', focus: 'signs', aspects: [],
+      paras: [
+        'Весь круг поделён на 12 цветных ломтиков, как торт. Каждый ломтик — один знак зодиака, его значок нарисован внутри ломтика: ♈ Овен, ♉ Телец, ♊ Близнецы и так далее по кругу.',
+        'Маленькие чёрточки по краю ломтика — градусы, одна чёрточка = 5°. В каждом знаке ровно 30°.',
+        `Пример из вашей карты: значок ☉ (Солнце) стоит в ломтике ${sunSign.glyph} — значит, ваше Солнце в знаке ${sunSign.prep}. А ☽ (Луна) — в ${moonSign.glyph}, Луна у вас в знаке ${moonSign.prep}.`,
+      ],
+    },
+    {
+      t: 'Лучи от центра — границы домов, цифры — их номера', focus: 'cusps', aspects: [],
+      paras: [
+        'От центра к кольцу идут тонкие линии-лучи. Они делят круг на 12 «комнат» — домов. Маленькая цифра внутри каждой комнаты — её номер: 1, 2, 3 … 12.',
+        'Каждый дом отвечает за свою сферу жизни: 1-й — характер и внешность, 7-й — брак, 10-й — карьера и так далее.',
+        'Маленькая цифра со значком ° снаружи кольца — точный градус начала дома.',
+        `Как читать: найдите планету и посмотрите, между какими лучами она стоит. Ваше Солнце ☉ попало в «комнату» №${sun.house} — значит, Солнце у вас в ${sun.house}-м доме. Вся расшифровка домов — во вкладке «Дома».`,
+      ],
+    },
+    {
+      t: 'Кружочки со значками — планеты', focus: 'planets', aspects: [],
+      paras: [
+        'Каждый цветной кружок со значком — планета: ☉ Солнце, ☽ Луна, ☿ Меркурий, ♀ Венера, ♂ Марс, ♃ Юпитер, ♄ Сатурн, ♅ Уран, ♆ Нептун, ♇ Плутон, ⚷ Хирон, ☊ Северный узел.',
+        'Значок стоит внутри кольца знаков: в каком ломтике кружок — в таком знаке планета, между какими лучами — в таком доме.',
+        'Если две планеты родились рядом и кружки налезают друг на друга, один чуть сдвигают, чтобы было видно оба. Тонкая серая ниточка от такого кружка показывает его настоящее место.',
+      ],
+    },
+    {
+      t: 'Золотые линии и буквы ASC и MC — главные оси карты', focus: 'angles', aspects: [],
+      paras: [
+        'Две линии толще и золотее остальных, а за кольцом стоят буквы ASC и MC.',
+        'ASC (Асцендент) — всегда строго слева, на «9 часах». Это знак, который восходил над горизонтом в момент рождения: ваш внешний образ, маска, первое впечатление.',
+        'MC (Середина неба) — самая верхняя точка: карьера, призвание, вершина, к которой вы идёте.',
+        `В вашей карте: ASC — ${degStr(c.h.asc)}, MC — ${degStr(c.h.mc)}. Подробно — во вкладке «Асцендент и MC».`,
+      ],
+    },
+    {
+      t: 'Зелёные линии в центре — гармоничные аспекты (помощь)', focus: 'aspects', aspects: good,
+      paras: [
+        'Зелёные линии соединяют планеты, которые дружат и помогают друг другу: трин (120°) — талант, данный от природы, секстиль (60°) — возможности, которые легко открываются.',
+        'Чем больше зелёного у планеты — тем легче она работает.',
+        good.length ? `В вашей карте ${good.length} зелёных аспектов — например, ${good[0].aspect.name} между ${nm(good[0].a)} и ${nm(good[0].b)}.` : 'В вашей карте зелёных аспектов мало — всё даётся трудом, но и закалка сильнее.',
+      ],
+    },
+    {
+      t: 'Красные пунктирные линии — напряжённые аспекты (задачи)', focus: 'aspects', aspects: bad,
+      paras: [
+        'Красные линии соединяют планеты, которые спорят между собой: квадрат (90°) — внутренний конфликт, оппозиция (180°) — качели «или-или».',
+        'Это не «плохо»: напряжение — мотор. Именно красные аспекты заставляют расти и дают самые большие достижения при проработке.',
+        bad.length ? `В вашей карте ${bad.length} красных аспектов — например, ${bad[0].aspect.name} между ${nm(bad[0].a)} и ${nm(bad[0].b)}.` : 'В вашей карте нет красных аспектов — внутренних войн почти нет.',
+      ],
+    },
+    {
+      t: 'Золотая линия между планетами — соединение (слияние)', focus: 'aspects', aspects: conj,
+      paras: [
+        'Если две планеты стоят почти в одной точке (разница до ~8–10°), их рисуют золотой линией — это соединение.',
+        'Энергии таких планет не разделить: они всегда действуют вместе, как один гибрид.',
+        conj.length ? `В вашей карте: ${conj.map(a => `${nm(a.a)} + ${nm(a.b)}`).join(', ')}.` : 'В вашей карте соединений нет — каждая планета звучит отдельно.',
+      ],
+    },
+    {
+      t: 'Буква R у планеты — ретроградность', focus: 'planets', aspects: [],
+      paras: [
+        'Красная буква R у кружка значит: в момент рождения планета как будто «пятилась назад» по небу (это видимое движение, с Земли).',
+        'Темы такой планеты обращены внутрь: они раскрываются позже и глубже, часто — через повторение уроков.',
+        retroPts.length ? `У вас ретроградны: ${retroPts.map(p => nm(p.id)).join(', ')}. Расшифровка — во вкладке «Карма».` : 'В вашей карте нет ретроградных планет.',
+      ],
+    },
+  ];
+  $('#tab-schema').innerHTML = `
+    <p class="hint">Разбор колеса по полочкам: ниже каждый элемент показан на отдельной мини-схеме — ярким оставлен только он, остальное приглушено. Все схемы построены по вашей карте.</p>
+    ${items.map((it, i) => `<div class="card" open><summary><div class="card-head"><span class="card-title">${i + 1}. ${esc(it.t)}</span></div><span class="card-chevron">▾</span></summary>
+      <div class="card-body"><div class="schema-wheel"><svg id="schemaWheel${i}" viewBox="0 0 760 760"></svg></div>
+      ${it.paras.map(p => `<p>${esc(p)}</p>`).join('')}</div></div>`).join('')}`;
+  items.forEach((it, i) => drawWheel(document.getElementById('schemaWheel' + i), { ...base, aspects: it.aspects }, it.focus));
 }
 
 function renderPlanets(c) {
@@ -330,8 +427,7 @@ $('#btnCalc').onclick = () => {
   }
 };
 
-$('#btnShare').onclick = async () => {
-  if (!lastChart) return toast('Сначала сделайте расчёт');
+$('#btnShare').onclick = async () => {  if (!lastChart) return toast('Сначала сделайте расчёт');
   const f = lastChart.form;
   const q = new URLSearchParams({
     fn: f.name, fd: f.d, fm: f.m, fy: f.y, fh: f.hh, fmn: f.mm,
@@ -340,6 +436,21 @@ $('#btnShare').onclick = async () => {
   const link = location.origin + location.pathname + '?' + q.toString();
   try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована'); }
   catch { prompt('Скопируйте ссылку:', link); }
+};
+
+$('#btnPdf').onclick = async () => {
+  if (!lastChart) return toast('Сначала сделайте расчёт');
+  const btn = $('#btnPdf');
+  btn.disabled = true; btn.textContent = 'Готовим PDF…';
+  try {
+    const { downloadPdf } = await import('./pdf.js?v=1');
+    await downloadPdf(lastChart, $('#city').value, $('#wheelSvg'));
+    toast('PDF сохранён');
+  } catch (e) {
+    toast('Не удалось создать PDF: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Скачать PDF';
+  }
 };
 
 // ---------- Сохранённые ----------
