@@ -43,13 +43,19 @@ function svgToPng(svg) {
     bg.setAttribute('width', 760); bg.setAttribute('height', 760); bg.setAttribute('fill', '#0a0c16');
     clone.insertBefore(bg, clone.firstChild);
     const xml = new XMLSerializer().serializeToString(clone);
+    renderPng(xml, 1520).then(res, rej);
+  });
+}
+
+function renderPng(xml, px) {
+  return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
       const cv = document.createElement('canvas');
-      cv.width = 1520; cv.height = 1520;
+      cv.width = px; cv.height = px;
       const ctx = cv.getContext('2d');
-      ctx.fillStyle = '#0a0c16'; ctx.fillRect(0, 0, 1520, 1520);
-      ctx.drawImage(img, 0, 0, 1520, 1520);
+      ctx.fillStyle = '#0a0c16'; ctx.fillRect(0, 0, px, px);
+      ctx.drawImage(img, 0, 0, px, px);
       res(cv.toDataURL('image/png'));
     };
     img.onerror = () => rej(new Error('svg render'));
@@ -57,12 +63,48 @@ function svgToPng(svg) {
   });
 }
 
+// Аспектная сетка -> SVG-строка (порядок точек как в app.js GRID_POINTS)
+const GRID_ORDER = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto',
+  'Chiron', 'Lilith', 'Selena', 'NorthNode', 'SouthNode', 'ParsFortuna', 'Vertex', 'ASC', 'MC'];
+function gridSvg(c) {
+  const CELL = 34, n = GRID_ORDER.length, W = CELL * n;
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const lonOf = id => id === 'ASC' ? c.h.asc : id === 'MC' ? c.h.mc : c.pts.find(p => p.id === id)?.lon;
+  const retroOf = id => c.pts.find(p => p.id === id)?.retro;
+  const map = new Map();
+  for (const a of c.aspects) map.set(`${a.a}|${a.b}`, a);
+  const aspColor = a => a.aspect.id === 'conjunction' ? '#ffd166' : a.aspect.id === 'quincunx' ? '#4fd1c5' : a.aspect.nature > 0 ? '#5ce8a0' : '#ff6b6b';
+  let s = `<rect width="${W}" height="${W}" fill="#0a0c16"/>`;
+  const label = (id, x, y) => {
+    const col = PLANETS[id].color, gl = PLANETS[id].glyph;
+    const r = retroOf(id) ? `<text x="${x + 13}" y="${y - 6}" font-size="11" fill="#ff6b6b" font-weight="bold">R</text>` : '';
+    return `<text x="${x}" y="${y}" font-size="${gl.length > 2 ? 11 : 18}" fill="${col}" text-anchor="middle" font-family="Segoe UI, sans-serif">${esc(gl)}</text>${r}`;
+  };
+  for (let j = 0; j < n - 1; j++) s += label(GRID_ORDER[j], (j + 1) * CELL + CELL / 2, CELL / 2 + 7);
+  for (let i = 1; i < n; i++) {
+    s += label(GRID_ORDER[i], CELL / 2, i * CELL + CELL / 2 + 7);
+    for (let j = 0; j < i; j++) {
+      const a = map.get(`${GRID_ORDER[j]}|${GRID_ORDER[i]}`) || map.get(`${GRID_ORDER[i]}|${GRID_ORDER[j]}`);
+      const x = (j + 1) * CELL, y = i * CELL;
+      s += `<rect x="${x}" y="${y}" width="${CELL}" height="${CELL}" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>`;
+      if (a) s += `<text x="${x + CELL / 2}" y="${y + CELL / 2 + 7}" font-size="17" fill="${aspColor(a)}" text-anchor="middle" font-family="Segoe UI, sans-serif">${a.aspect.glyph}</text>`;
+    }
+  }
+  // внешняя рамка и левая/верхняя границы
+  for (let i = 0; i < n; i++) {
+    s += `<rect x="0" y="${i * CELL}" width="${CELL}" height="${CELL}" fill="none" stroke="rgba(255,255,255,0.12)"/>`;
+    s += `<rect x="${i * CELL}" y="0" width="${CELL}" height="${CELL}" fill="none" stroke="rgba(255,255,255,0.12)"/>`;
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${W}" viewBox="0 0 ${W} ${W}">${s}</svg>`;
+}
+
 const GOLD = '#b8860b', DIM = '#555555', VIOLET = '#5a4fcf', GOOD = '#1a8f4d', BAD = '#c0392b';
 
 export async function downloadPdf(c, cityName, svg) {
   await ensurePdfMake();
-  let wheelPng = null;
+  let wheelPng = null, gridPng = null;
   try { wheelPng = await svgToPng(svg); } catch { /* без картинки */ }
+  try { gridPng = await renderPng(gridSvg(c), 1292); } catch { /* без сетки */ }
 
   const f = c.form;
   const pts = id => c.pts.find(p => p.id === id);
@@ -153,6 +195,9 @@ export async function downloadPdf(c, cityName, svg) {
   }
 
   // Все аспекты
+  content.push(H('Аспектная сетка'));
+  if (gridPng) content.push({ image: gridPng, width: 430, alignment: 'center', margin: [0, 4, 0, 4] });
+  content.push(P0('Соединение 0° · тригон 120° · секстиль 60° · квинконс 150° · квадрат 90° · оппозиция 180°. Золотые — соединения, зелёные и бирюзовые — гармоничные, красные — напряжённые. Орбы: до 8° для Солнца и Луны, 6–7° для планет, 2–3° для фиктивных точек.', { color: DIM, fontSize: 9 }));
   content.push(H('Все аспекты'));
   const aRows = [['Планета', 'Аспект', 'Планета', 'Орб'].map(x => ({ text: x, bold: true, fontSize: 9.5 }))];
   for (const a of c.aspects) aRows.push([
