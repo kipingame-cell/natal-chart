@@ -49,6 +49,7 @@
     <div class="form-actions">
       <button id="btnCalc" class="btn-primary">Рассчитать карту</button>
       <button id="btnShare" class="btn-ghost">Поделиться ссылкой</button>
+      <button id="btnPdf" class="btn-ghost">Скачать PDF</button>
     </div>
     <div id="savedWrap" class="saved" hidden>
       <div class="saved-title">Сохранённые карты</div>
@@ -64,6 +65,7 @@
     <div class="wheel-wrap"><svg id="wheelSvg" viewBox="0 0 760 760" role="img" aria-label="Натальная карта"></svg></div>
     <nav class="tabs-col">
       <button class="chip active" data-tab="overview">Обзор</button>
+      <button class="chip" data-tab="summary">Вывод</button>
       <button class="chip" data-tab="planets">Планеты</button>
       <button class="chip" data-tab="angles">Асцендент и MC</button>
       <button class="chip" data-tab="houses">Дома</button>
@@ -71,9 +73,11 @@
       <button class="chip" data-tab="karma">Карма</button>
       <button class="chip" data-tab="dyn">Астродины</button>
       <button class="chip" data-tab="elements">Стихии</button>
+      <button class="chip" data-tab="schema">Схема</button>
     </nav>
     <div class="slides">
       <div id="tab-overview" class="slide active"></div>
+      <div id="tab-summary" class="slide"></div>
       <div id="tab-planets" class="slide"></div>
       <div id="tab-angles" class="slide"></div>
       <div id="tab-houses" class="slide"></div>
@@ -81,6 +85,7 @@
       <div id="tab-karma" class="slide"></div>
       <div id="tab-dyn" class="slide"></div>
       <div id="tab-elements" class="slide"></div>
+      <div id="tab-schema" class="slide"></div>
     </div>
   </section>
 
@@ -93,6 +98,6 @@
 <script>var exports = {};</script>
 <script src="vendor/astronomy.js"></script>
 <script>globalThis.Astronomy = exports;</script>
-<script type="module" src="js/app.js"></script>
+<script type="module" src="js/app.js?v=2"></script>
 </body>
 </html>

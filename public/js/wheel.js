@@ -1,7 +1,6 @@
 // SVG-колесо натальной карты.
 import { SIGNS, PLANETS, signOf } from './astro/format.js';
 import { norm360 } from './astro/core.js';
-import { ASPECTS } from './astro/aspects.js';
 
 const NS = 'http://www.w3.org/2000/svg';
 const el = (tag, attrs = {}, parent) => {
@@ -27,30 +26,38 @@ function makeProj(asc, cx, cy) {
 
 const ELEMENT_FILL = { fire: 'rgba(255,107,107,.10)', earth: 'rgba(92,232,160,.09)', air: 'rgba(255,209,102,.09)', water: 'rgba(143,123,255,.12)' };
 const ASP_COLOR = { conjunction: '#ffd166', sextile: '#5ce8a0', trine: '#5ce8a0', square: '#ff6b6b', opposition: '#ff6b6b' };
+const GROUPS = ['signs', 'cusps', 'aspects', 'planets', 'angles'];
 
-export function drawWheel(svg, { points, cusps, asc, mc, aspects }) {
+// focus: null — всё ярко; иначе имя группы ('signs'|'cusps'|'aspects'|'planets'|'angles') — остальные приглушены
+export function drawWheel(svg, { points, cusps, asc, mc, aspects }, focus = null) {
   svg.innerHTML = '';
   const W = 760, H = 760, cx = W / 2, cy = H / 2;
   const R_OUT = 346, R_SIGN_IN = 288, R_GLYPH = 314, R_CUSP_IN = 210, R_PLANET = 168, R_CENTER = 118;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const proj = makeProj(asc, cx, cy);
 
+  const g = {};
+  for (const name of GROUPS) {
+    g[name] = el('g', {}, svg);
+    if (focus && focus !== name) g[name].setAttribute('opacity', 0.08);
+  }
+
   // зодиакальное кольцо
   for (let s = 0; s < 12; s++) {
     const p = [proj(s * 30, R_SIGN_IN), proj(s * 30, R_OUT), proj((s + 1) * 30, R_OUT), proj((s + 1) * 30, R_SIGN_IN)];
     const path = `M ${p[0].x} ${p[0].y} L ${p[1].x} ${p[1].y} A ${R_OUT} ${R_OUT} 0 0 1 ${p[2].x} ${p[2].y} L ${p[3].x} ${p[3].y} A ${R_SIGN_IN} ${R_SIGN_IN} 0 0 0 ${p[0].x} ${p[0].y} Z`;
-    el('path', { d: path, fill: ELEMENT_FILL[SIGNS[s].element], stroke: 'rgba(255,255,255,.10)', 'stroke-width': 1 }, svg);
+    el('path', { d: path, fill: ELEMENT_FILL[SIGNS[s].element], stroke: 'rgba(255,255,255,.10)', 'stroke-width': 1 }, g.signs);
     const mid = proj(s * 30 + 15, R_GLYPH);
-    text(svg, mid.x, mid.y, SIGNS[s].glyph, 'wheel-sign', 22);
+    text(g.signs, mid.x, mid.y, SIGNS[s].glyph, 'wheel-sign', 22);
     // градусные риски каждые 5°
-    for (let g = 0; g < 6; g++) {
-      const l1 = proj(s * 30 + g * 5, R_SIGN_IN), l2 = proj(s * 30 + g * 5, R_SIGN_IN + 6);
-      el('line', { x1: l1.x, y1: l1.y, x2: l2.x, y2: l2.y, stroke: 'rgba(255,255,255,.25)', 'stroke-width': 1 }, svg);
+    for (let k = 0; k < 6; k++) {
+      const l1 = proj(s * 30 + k * 5, R_SIGN_IN), l2 = proj(s * 30 + k * 5, R_SIGN_IN + 6);
+      el('line', { x1: l1.x, y1: l1.y, x2: l2.x, y2: l2.y, stroke: 'rgba(255,255,255,.25)', 'stroke-width': 1 }, g.signs);
     }
   }
-  el('circle', { cx, cy, r: R_OUT, fill: 'none', stroke: 'rgba(255,209,102,.35)', 'stroke-width': 1.4 }, svg);
-  el('circle', { cx, cy, r: R_SIGN_IN, fill: 'none', stroke: 'rgba(255,255,255,.14)', 'stroke-width': 1 }, svg);
-  el('circle', { cx, cy, r: R_CUSP_IN, fill: 'rgba(10,12,22,.55)', stroke: 'rgba(255,255,255,.10)', 'stroke-width': 1 }, svg);
+  el('circle', { cx, cy, r: R_OUT, fill: 'none', stroke: 'rgba(255,209,102,.35)', 'stroke-width': 1.4 }, g.signs);
+  el('circle', { cx, cy, r: R_SIGN_IN, fill: 'none', stroke: 'rgba(255,255,255,.14)', 'stroke-width': 1 }, g.signs);
+  el('circle', { cx, cy, r: R_CUSP_IN, fill: 'rgba(10,12,22,.55)', stroke: 'rgba(255,255,255,.10)', 'stroke-width': 1 }, g.cusps);
 
   // куспиды домов
   for (let h = 1; h <= 12; h++) {
@@ -60,23 +67,23 @@ export function drawWheel(svg, { points, cusps, asc, mc, aspects }) {
       x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
       stroke: isAngle ? 'rgba(255,209,102,.75)' : 'rgba(154,160,195,.35)',
       'stroke-width': isAngle ? 2 : 1,
-    }, svg);
+    }, g.cusps);
     // номер дома — в середине дома
     const next = cusps[h === 12 ? 1 : h + 1];
     const span = norm360(next - cusps[h]);
     const mid = proj(norm360(cusps[h] + span / 2), R_CUSP_IN + 16);
-    text(svg, mid.x, mid.y, String(h), 'wheel-house-num', 11);
+    text(g.cusps, mid.x, mid.y, String(h), 'wheel-house-num', 11);
     // градусы куспида
     const d = cusps[h] % 30;
     const lp = proj(cusps[h], R_SIGN_IN + 14);
     const rot = 360 - (asc - cusps[h]); // выравнивание по радиусу
-    const t = text(svg, lp.x, lp.y, `${Math.floor(d)}°`, 'wheel-cusp-deg', 9);
+    const t = text(g.cusps, lp.x, lp.y, `${Math.floor(d)}°`, 'wheel-cusp-deg', 9);
     t.setAttribute('transform', `rotate(${90 - rot}, ${lp.x}, ${lp.y})`);
   }
 
   // метки ASC / MC
-  const pa = proj(asc, R_OUT + 16); text(svg, pa.x, pa.y, 'ASC', 'wheel-angle', 13);
-  const pm = proj(mc, R_OUT + 16); text(svg, pm.x, pm.y, 'MC', 'wheel-angle', 13);
+  const pa = proj(asc, R_OUT + 16); text(g.angles, pa.x, pa.y, 'ASC', 'wheel-angle', 13);
+  const pm = proj(mc, R_OUT + 16); text(g.angles, pm.x, pm.y, 'MC', 'wheel-angle', 13);
 
   // аспектные линии в центре
   const lonById = {};
@@ -88,7 +95,7 @@ export function drawWheel(svg, { points, cusps, asc, mc, aspects }) {
       x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
       stroke: ASP_COLOR[a.aspect.id], 'stroke-width': a.aspect.id === 'conjunction' ? 2.2 : 1.4,
       opacity: 0.55, 'stroke-dasharray': a.aspect.nature === 1 ? 'none' : (a.aspect.id === 'conjunction' ? 'none' : '5 4'),
-    }, svg);
+    }, g.aspects);
   }
 
   // планеты: раскладка с защитой от наложения
@@ -103,17 +110,17 @@ export function drawWheel(svg, { points, cusps, asc, mc, aspects }) {
     prev = disp;
   }
   for (const it of items) {
-    const g = PLANETS[it.id] || { glyph: '?', color: '#fff', name: it.id };
+    const gd = PLANETS[it.id] || { glyph: '?', color: '#fff', name: it.id };
     const at = proj(it.dispLon, R_PLANET);
     // указатель к истинной позиции, если сдвинули
     if (Math.abs(norm360(it.dispLon - it.lon + 180) - 180) > 1.5) {
       const a1 = proj(it.dispLon, R_PLANET - 12), a2 = proj(it.lon, R_CUSP_IN + 4);
-      el('line', { x1: a1.x, y1: a1.y, x2: a2.x, y2: a2.y, stroke: 'rgba(255,255,255,.18)', 'stroke-width': 1 }, svg);
+      el('line', { x1: a1.x, y1: a1.y, x2: a2.x, y2: a2.y, stroke: 'rgba(255,255,255,.18)', 'stroke-width': 1 }, g.planets);
     }
-    const c = el('circle', { cx: at.x, cy: at.y, r: 13, fill: 'rgba(26,30,61,.92)', stroke: g.color, 'stroke-width': 1.4, class: 'wheel-planet' }, svg);
-    const tt = el('title', {}, c); tt.textContent = `${g.name}: ${signOf(it.lon).name} ${Math.floor(it.lon % 30)}°${it.retro ? ' R' : ''}`;
-    const t = text(svg, at.x, at.y + 0.5, g.glyph, 'wheel-planet-glyph', 14);
-    t.setAttribute('fill', g.color);
-    if (it.retro) text(svg, at.x + 12, at.y - 9, 'R', 'wheel-retro', 9).setAttribute('fill', '#ff6b6b');
+    const c = el('circle', { cx: at.x, cy: at.y, r: 13, fill: 'rgba(26,30,61,.92)', stroke: gd.color, 'stroke-width': 1.4, class: 'wheel-planet' }, g.planets);
+    const tt = el('title', {}, c); tt.textContent = `${gd.name}: ${signOf(it.lon).name} ${Math.floor(it.lon % 30)}°${it.retro ? ' R' : ''}`;
+    const t = text(g.planets, at.x, at.y + 0.5, gd.glyph, 'wheel-planet-glyph', 14);
+    t.setAttribute('fill', gd.color);
+    if (it.retro) text(g.planets, at.x + 12, at.y - 9, 'R', 'wheel-retro', 9).setAttribute('fill', '#ff6b6b');
   }
 }
