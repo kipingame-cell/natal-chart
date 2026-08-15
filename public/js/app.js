@@ -134,7 +134,6 @@ const nm = id => (PLANETS[id] || {}).name || id;
 const degStr = lon => { const f = fmtDeg(lon); return `${f.sign.glyph} ${f.sign.prep} ${Math.floor(lon % 30)}°`; };
 
 function render(chart) {
-  lastChart = chart;
   $('#results').hidden = false;
   const f = chart.form;
   $('#chartTitle').textContent = f.name ? `${f.name} — натальная карта` : 'Натальная карта';
@@ -156,6 +155,7 @@ function render(chart) {
   renderDyn(chart);
   renderElements(chart);
   renderSchema(chart);
+  lastChart = chart; // только после успешной отрисовки: иначе PDF/шаринг уйдут с данными, которых нет на экране
   document.querySelectorAll('.chip')[0]?.click();
   $('#results').scrollIntoView({ behavior: 'smooth' });
 }
