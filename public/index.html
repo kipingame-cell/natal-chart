@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Натальная карта онлайн — полный расчёт с интерпретацией</title>
+<meta name="description" content="Бесплатный расчёт полной натальной карты онлайн: планеты в знаках и домах, Асцендент, Середина неба, аспекты с орбами, конфигурации (Большой тригон, Тау-квадрат, Парус), кармические показатели — узлы, Лилит, Селена, Парс Фортуны, Вертекс. Точные астрономические эфемериды прямо в браузере.">
+<meta property="og:title" content="✦ Натальная карта онлайн">
+<meta property="og:description" content="Полный расчёт натальной карты: планеты, дома, аспекты, конфигурации и карма с подробной интерпретацией.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>✦</text></svg>">
+<link rel="stylesheet" href="css/style.css">
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"WebApplication","name":"Натальная карта онлайн","description":"Полный расчёт натальной карты с интерпретацией: планеты, дома, аспекты, карма","applicationCategory":"LifestyleApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"RUB"}}
+</script>
+</head>
+<body>
+<header class="site-header">
+  <div class="logo">✦ НАТАЛЬНАЯ КАРТА</div>
+  <div class="header-tag">планеты · дома · аспекты · карма</div>
+</header>
+
+<main class="page">
+  <section class="form-card">
+    <h1 class="form-title">Расчёт натальной карты</h1>
+    <p class="form-sub">Полная карта рождения с интерпретацией: планеты в знаках и домах, аспекты, конфигурации, кармические точки. Расчёт выполняется в вашем браузере по точным астрономическим эфемеридам.</p>
+    <div class="form-grid">
+      <label class="fld fld-wide"><span>Имя</span><input id="name" type="text" placeholder="Необязательно"></label>
+      <label class="fld"><span>Дата рождения</span><input id="date" type="date" min="1900-01-01" max="2100-12-31" required></label>
+      <label class="fld"><span>Время рождения</span><input id="time" type="time" value="12:00"></label>
+      <label class="fld fld-wide city-fld"><span>Город рождения</span>
+        <input id="city" type="text" placeholder="Начните вводить…" autocomplete="off">
+        <div id="citySugg" class="sugg" hidden></div>
+      </label>
+      <button id="btnGeo" type="button" class="btn-ghost">Найти онлайн</button>
+      <label class="fld"><span>Широта</span><input id="lat" type="number" step="0.0001" placeholder="54.3204"></label>
+      <label class="fld"><span>Долгота</span><input id="lon" type="number" step="0.0001" placeholder="40.8740"></label>
+      <label class="fld"><span>Часовой пояс</span>
+        <select id="utc">
+          <option value="-2">UTC−2</option><option value="-1">UTC−1</option><option value="0">UTC+0</option>
+          <option value="1">UTC+1</option><option value="2">UTC+2</option><option value="3" selected>UTC+3 (Москва)</option>
+          <option value="4">UTC+4</option><option value="5">UTC+5</option><option value="6">UTC+6</option>
+          <option value="7">UTC+7</option><option value="8">UTC+8</option><option value="9">UTC+9</option>
+          <option value="10">UTC+10</option><option value="11">UTC+11</option><option value="12">UTC+12</option>
+        </select></label>
+      <label class="fld fld-check"><input id="dst" type="checkbox"><span>Летнее время (+1 ч)</span></label>
+    </div>
+    <p class="hint">Для дат 1981–2010 в СССР/России действовало летнее время — галочка подставится автоматически; проверьте для вашего случая.</p>
+    <div class="form-actions">
+      <button id="btnCalc" class="btn-primary">Рассчитать карту</button>
+      <button id="btnShare" class="btn-ghost">Поделиться ссылкой</button>
+    </div>
+    <div id="savedWrap" class="saved" hidden>
+      <div class="saved-title">Сохранённые карты</div>
+      <div id="savedList"></div>
+    </div>
+  </section>
+
+  <section id="results" hidden>
+    <div class="chart-head">
+      <h2 id="chartTitle"></h2>
+      <p id="chartSub" class="chart-sub"></p>
+    </div>
+    <div class="wheel-wrap"><svg id="wheelSvg" viewBox="0 0 760 760" role="img" aria-label="Натальная карта"></svg></div>
+    <nav class="tabs-col">
+      <button class="chip active" data-tab="overview">Обзор</button>
+      <button class="chip" data-tab="planets">Планеты</button>
+      <button class="chip" data-tab="angles">Асцендент и MC</button>
+      <button class="chip" data-tab="houses">Дома</button>
+      <button class="chip" data-tab="aspects">Аспекты</button>
+      <button class="chip" data-tab="karma">Карма</button>
+      <button class="chip" data-tab="dyn">Астродины</button>
+      <button class="chip" data-tab="elements">Стихии</button>
+    </nav>
+    <div class="slides">
+      <div id="tab-overview" class="slide active"></div>
+      <div id="tab-planets" class="slide"></div>
+      <div id="tab-angles" class="slide"></div>
+      <div id="tab-houses" class="slide"></div>
+      <div id="tab-aspects" class="slide"></div>
+      <div id="tab-karma" class="slide"></div>
+      <div id="tab-dyn" class="slide"></div>
+      <div id="tab-elements" class="slide"></div>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <p>Расчёт выполняется локально в браузере на основе библиотеки Astronomy Engine (MIT). Положения Хирона, Селены и Лилит — приближённые (помечены ≈). Материалы носят ознакомительный характер.</p>
+  </footer>
+</main>
+
+<div id="toast" class="toast"></div>
+<script>var exports = {};</script>
+<script src="vendor/astronomy.js"></script>
+<script>globalThis.Astronomy = exports;</script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
