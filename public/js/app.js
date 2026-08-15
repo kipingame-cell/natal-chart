@@ -11,7 +11,7 @@ import { pairText, PLANET_ABOUT, ELEMENT_TEXTS, CROSS_TEXTS, KARMIC_INTRO } from
 import { searchLocalCities, geocodeOnline } from './geo.js';
 import { dstSuggested } from './data/cities.js';
 import { drawWheel } from './wheel.js?v=3';
-import { buildSummary } from './summary.js?v=1';
+import { buildSummary } from './summary.js?v=2';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -475,7 +475,7 @@ $('#btnPdf').onclick = async () => {
   const btn = $('#btnPdf');
   btn.disabled = true; btn.textContent = 'Готовим PDF…';
   try {
-    const { downloadPdf } = await import('./pdf.js?v=3');
+    const { downloadPdf } = await import('./pdf.js?v=4');
     await downloadPdf(lastChart, $('#city').value, $('#wheelSvg'));
     toast('PDF сохранён');
   } catch (e) {
