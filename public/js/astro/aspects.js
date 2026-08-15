@@ -1,17 +1,31 @@
 // Аспекты и конфигурации аспектов.
 import { norm360 } from './core.js';
 
-// Мажорные аспекты с орбами (школа, близкая к geocult)
+// Аспекты (включая квинконс 150°). Орбы — схема, реверс-инжинирингом снятая с geocult
+// (проверена на трёх эталонных картах: наборы аспектов совпадают 34/34, 40/40, 33/33).
 export const ASPECTS = [
   { id: 'conjunction', name: 'Соединение', angle: 0, orb: 8, glyph: '☌', nature: 0 },
   { id: 'sextile', name: 'Секстиль', angle: 60, orb: 6, glyph: '⚹', nature: 1 },
   { id: 'square', name: 'Квадрат', angle: 90, orb: 8, glyph: '□', nature: -1 },
   { id: 'trine', name: 'Тригон', angle: 120, orb: 8, glyph: '△', nature: 1 },
+  { id: 'quincunx', name: 'Квинконс', angle: 150, orb: 8, glyph: '⚻', nature: 1 },
   { id: 'opposition', name: 'Оппозиция', angle: 180, orb: 8, glyph: '☍', nature: -1 },
 ];
 
-// Узкие орбы для фиктивных точек
-const TIGHT = new Set(['NorthNode', 'Selena', 'Lilith', 'ParsFortuna', 'Vertex', 'ASC', 'MC']);
+// Индивидуальный потолок орба для каждой точки; для пары берётся минимум.
+// Схема снята с geocult реверс-инжинирингом (эталоны 2003/2006/1995: полное совпадение наборов).
+export const ORB_CAP = {
+  Sun: 8, Moon: 8, Mercury: 6, Venus: 7, Mars: 6, Jupiter: 6, Saturn: 6,
+  Uranus: 6.5, Neptune: 6.5, Pluto: 6.5, Chiron: 6, ASC: 6, MC: 6,
+  Vertex: 3, Lilith: 2.1, Selena: 2.8, NorthNode: 2.8, SouthNode: 2.8, ParsFortuna: 2,
+};
+// У квинконса свои потолки (у большинства «настоящих» точек шире — до 8°).
+const QUINCUNX_CAP = {
+  Sun: 8, Moon: 8, Mercury: 6, Venus: 8, Mars: 8, Jupiter: 8, Saturn: 6,
+  Uranus: 6, Neptune: 8, Pluto: 8, Chiron: 8, ASC: 6, MC: 6,
+  Vertex: 3, Lilith: 2.1, Selena: 2.8, NorthNode: 2.8, SouthNode: 2.8, ParsFortuna: 2,
+};
+const DEFAULT_CAP = 5;
 
 export function angleBetween(a, b) {
   return Math.abs(norm360(a - b + 180) - 180);
@@ -23,12 +37,14 @@ export function findAspects(points) {
   for (let i = 0; i < points.length; i++) {
     for (let j = i + 1; j < points.length; j++) {
       const p = points[i], q = points[j];
+      // geocult не показывает взаимный аспект осей ASC–MC
+      if ((p.id === 'ASC' && q.id === 'MC') || (p.id === 'MC' && q.id === 'ASC')) continue;
       const d = angleBetween(p.lon, q.lon);
-      const orbMax = (TIGHT.has(p.id) || TIGHT.has(q.id)) ? 5 : null;
       for (const asp of ASPECTS) {
         const orb = Math.abs(d - asp.angle);
-        const max = orbMax !== null ? Math.min(orbMax, asp.orb) : asp.orb;
-        if (orb <= max) {
+        const caps = asp.id === 'quincunx' ? QUINCUNX_CAP : ORB_CAP;
+        const cap = Math.min(caps[p.id] ?? DEFAULT_CAP, caps[q.id] ?? DEFAULT_CAP);
+        if (orb <= Math.min(cap, asp.orb)) {
           out.push({ a: p.id, b: q.id, aspect: asp, orb: +orb.toFixed(2), la: p.lon, lb: q.lon });
           break;
         }

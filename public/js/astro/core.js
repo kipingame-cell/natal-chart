@@ -1,6 +1,6 @@
 // Астро-ядро: положения планет и фиктивных точек.
 // Эфемериды — Astronomy Engine (MIT, Don Cross), точность ±1 угл. минута.
-// Селена/Лилит — средние линейные модели, откалиброванные по swetest (geocult).
+// Селена/Лилит — средние линейные модели, откалиброванные по geocult (6 дат, 1995–2015).
 // Хирон — кеплерово приближение по осцулирующим элементам JPL Horizons (эпоха 2006).
 
 const DEG = Math.PI / 180;
@@ -86,21 +86,13 @@ function northNode(jd, sunLon) {
   return { mean, true: tru };
 }
 
-// Лилит (средний лунный апогей): линейная модель, калибровка по swetest
-// 15.03.1995 09:00 UT -> 67.9517°; 10.06.2006 18:00 UT -> 165.4600°
-const LILITH = (() => {
-  const jd1 = 2449791.875, l1 = 67.9517137, jd2 = 2453897.25, l2 = 165.4600171;
-  const rate = (l2 - l1) / (jd2 - jd1);
-  return { l0: l1, jd0: jd1, rate };
-})();
+// Лилит (средний лунный апогей + 180°): линейная модель, калибровка по geocult
+// на 6 датах 1995–2015 (макс. ошибка 0.14°)
+const LILITH = { l0: 263.34853967, jd0: J2000, rate: 0.111398014 };
 
-// Селена (Белая Луна): линейная модель, калибровка по swetest
-// 15.03.1995 09:00 UT -> 355.6553°; 10.06.2006 18:00 UT -> 213.7811°
-const SELENA = (() => {
-  const jd1 = 2449791.875, l1 = 355.6552971, jd2 = 2453897.25, l2 = 213.7811246;
-  const rate = (l2 - l1) / (jd2 - jd1);
-  return { l0: l1, jd0: jd1, rate };
-})();
+// Селена (Белая Луна): линейная модель, период ровно 7 лет, калибровка по geocult
+// на 6 датах 1995–2015 (макс. ошибка 0.02°)
+const SELENA = { l0: 242.50256728, jd0: J2000, rate: 0.140823277 };
 
 const BODIES = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 'Uranus', 'Neptune', 'Pluto'];
 
@@ -117,14 +109,14 @@ export function computePoints(jd) {
     const ll = b === 'Moon'
       ? { lon: norm360(Astronomy.EclipticGeoMoon(astroTime).lon), lat: Astronomy.EclipticGeoMoon(astroTime).lat }
       : geoEclLonLat(b, astroTime);
-    const speed = norm360(lonAt(b, t1) + 180) - 180 - (norm360(ll.lon + 180) - 180);
+    const speed = norm360(lonAt(b, t1) - ll.lon + 180) - 180;
     pts.push({ id: b, lon: ll.lon, lat: ll.lat, speed, retro: speed < 0 });
   }
 
   // Хирон
   const ch = chironGeo(jd, astroTime);
   const ch1 = chironGeo(jd + 1, t1);
-  const chSpeed = (norm360(ch1.lon + 180) - 180) - (norm360(ch.lon + 180) - 180);
+  const chSpeed = norm360(ch1.lon - ch.lon + 180) - 180;
   pts.push({ id: 'Chiron', lon: ch.lon, lat: ch.lat, speed: chSpeed, retro: chSpeed < 0, approx: true });
 
   const sunLon = pts[0].lon;

@@ -25,7 +25,7 @@ function makeProj(asc, cx, cy) {
 }
 
 const ELEMENT_FILL = { fire: 'rgba(255,107,107,.10)', earth: 'rgba(92,232,160,.09)', air: 'rgba(255,209,102,.09)', water: 'rgba(143,123,255,.12)' };
-const ASP_COLOR = { conjunction: '#ffd166', sextile: '#5ce8a0', trine: '#5ce8a0', square: '#ff6b6b', opposition: '#ff6b6b' };
+const ASP_COLOR = { conjunction: '#ffd166', sextile: '#5ce8a0', trine: '#5ce8a0', quincunx: '#4fd1c5', square: '#ff6b6b', opposition: '#ff6b6b' };
 const GROUPS = ['signs', 'cusps', 'aspects', 'planets', 'angles'];
 
 // focus: null — всё ярко; иначе имя группы ('signs'|'cusps'|'aspects'|'planets'|'angles') — остальные приглушены
