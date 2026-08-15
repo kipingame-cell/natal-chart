@@ -149,12 +149,13 @@ button,input,select{font:inherit;color:inherit}
 
 /* Аспектная сетка */
 .agrid-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
-.agrid{border-collapse:collapse;margin:0 auto}
-.agrid th,.agrid td{width:30px;height:30px;text-align:center;vertical-align:middle;
-  border:1px solid rgba(255,255,255,.07);font-size:15px;padding:0}
-.agrid th{background:rgba(255,255,255,.03);font-weight:400;white-space:nowrap}
-.agrid th .retro{font-size:9px;vertical-align:super;margin-left:1px}
-.agrid td{background:rgba(255,255,255,.015)}
+.agrid{border-collapse:collapse;margin:0 auto;table-layout:fixed}
+.agrid th,.agrid td{width:26px;height:26px;min-width:26px;max-width:26px;text-align:center;vertical-align:middle;
+  border:1px solid rgba(255,255,255,.07);font-size:13px;line-height:1;padding:0;overflow:hidden}
+.agrid th{background:rgba(255,255,255,.03);font-weight:400;font-size:10px;letter-spacing:-.02em}
+.agrid th>span{font-size:13px}
+.agrid th .retro{font-size:8px;vertical-align:super;margin-left:1px}
+.agrid td{background:rgba(255,255,255,.015);font-size:14px}
 .ag-conj{color:var(--gold)}
 .ag-pos{color:var(--good)}
 .ag-quin{color:var(--teal)}
