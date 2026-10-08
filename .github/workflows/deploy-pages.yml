@@ -22,10 +22,15 @@ jobs:
         run: |
           mkdir -p public/vendor
           for i in 1 2 3 4 5; do
-            curl -fsSL -o public/vendor/astronomy.js https://raw.githubusercontent.com/cosinekitty/astronomy/master/source/js/astronomy.js && break
+            curl -fsSL -o public/vendor/astronomy.js https://raw.githubusercontent.com/cosinekitty/astronomy/826e26ff3a6dc03ee46658b1138fef582d96c5d9/source/js/astronomy.js && break
             sleep 5
           done
           echo "716c921ad815df4174828663961fee7ec81906ad  public/vendor/astronomy.js" | sha1sum -c -
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate calculation references
+        run: node --test
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
