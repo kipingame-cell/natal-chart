@@ -1,0 +1,39 @@
+FILE: natal-chart-prepared-tests.log
+✔ planets 2006-06-10 18UT vs geocult (44.412479ms)
+✔ houses 2006 Placidus vs geocult (0.611604ms)
+✔ pars fortunae 2006 (ночная карта) (1.228297ms)
+✔ planets 1995-03-15 09UT vs geocult (9.661789ms)
+✔ houses 1995 Placidus vs geocult (0.440596ms)
+✔ pars fortunae 1995 (дневная карта) (1.313086ms)
+✔ сетка 2003: ровно 34 аспекта, из них 5 квинконсов (0.887662ms)
+✔ сетка 2003: ключевые аспекты geocult (0.183017ms)
+✔ сетка 2003: отсечения по орбам совпадают с geocult (0.110097ms)
+ℹ tests 9
+ℹ suites 0
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 172.451837
+
+SOURCE PROBES
+[
+  {
+    "repo": "natal-chart",
+    "id": "NATAL-R2-01",
+    "evidence": {
+      "requested": {
+        "time": "00:30",
+        "utc": 5.5
+      },
+      "restored": {
+        "time": "12:30",
+        "utc": 6
+      }
+    }
+  }
+]
+
+PORTABLE PROBE: node audit-2026-10-15/PROBE-R2.cjs
+CONFIRMED: 00:30 UTC+5:30 restored as 12:30 UTC+6
