@@ -101,7 +101,7 @@ function readForm() {
   if (!isFinite(lat) || !isFinite(lon)) throw new Error('Выберите город из списка или найдите онлайн');
   const utc = parseFloat($('#utc').value) + ($('#dst').checked ? 1 : 0);
   const jd = julianDay(y, m, d, hh + mm / 60 - utc);
-  return { jd, lat, lon, utc, name: $('#name').value.trim(), y, m, d, hh, mm };
+  return { jd, lat, lon, utc, dst: $('#dst').checked, name: $('#name').value.trim(), y, m, d, hh, mm };
 }
 
 function calc(form) {
@@ -463,7 +463,7 @@ $('#btnShare').onclick = async () => {  if (!lastChart) return toast('Снача
   const f = lastChart.form;
   const q = new URLSearchParams({
     fn: f.name, fd: f.d, fm: f.m, fy: f.y, fh: f.hh, fmn: f.mm,
-    c: $('#city').value, lt: f.lat, ln: f.lon, tz: f.utc,
+    c: $('#city').value, lt: f.lat, ln: f.lon, tz: f.utc, dst: f.dst ? '1' : '0',
   });
   const link = location.origin + location.pathname + '?' + q.toString();
   try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована'); }
@@ -489,7 +489,7 @@ $('#btnPdf').onclick = async () => {
 const LS_KEY = 'natal.saved';
 function saveCurrent() {
   const f = lastChart.form;
-  const rec = { name: f.name || 'Без имени', city: $('#city').value, y: f.y, m: f.m, d: f.d, hh: f.hh, mm: f.mm, lat: f.lat, lon: f.lon, utc: f.utc };
+  const rec = { name: f.name || 'Без имени', city: $('#city').value, y: f.y, m: f.m, d: f.d, hh: f.hh, mm: f.mm, lat: f.lat, lon: f.lon, utc: f.utc, dst: f.dst };
   const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]').filter(x => JSON.stringify(x) !== JSON.stringify(rec));
   arr.unshift(rec);
   localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 20)));
@@ -511,10 +511,27 @@ $('#savedList').addEventListener('click', e => {
     $('#name').value = r.name; $('#date').value = `${r.y}-${String(r.m).padStart(2, '0')}-${String(r.d).padStart(2, '0')}`;
     $('#time').value = `${String(r.hh).padStart(2, '0')}:${String(r.mm).padStart(2, '0')}`;
     $('#city').value = r.city; $('#lat').value = r.lat; $('#lon').value = r.lon;
-    $('#utc').value = Math.floor(r.utc); $('#dst').checked = r.utc % 1 !== 0 || false;
+    restoreTimezone(r.utc, r.dst === true);
     $('#btnCalc').click();
   }
 });
+
+// utc is the effective offset; legacy records do not encode DST separately.
+function restoreTimezone(utc, dst = false) {
+  const total = Number(utc);
+  if (!Number.isFinite(total) || total < -12 || total > 15) throw new Error('Некорректное смещение UTC');
+  const base = total - (dst ? 1 : 0);
+  const select = $('#utc');
+  if (!Array.from(select.options).some(o => Number(o.value) === base)) {
+    const option = document.createElement('option');
+    option.value = String(base);
+    const minutes = Math.round(Math.abs(base) * 60);
+    option.textContent = `UTC${base < 0 ? '−' : '+'}${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
+    select.appendChild(option);
+  }
+  select.value = String(base);
+  $('#dst').checked = dst;
+}
 
 // ---------- Восстановление из URL ----------
 (function fromUrl() {
@@ -522,11 +539,11 @@ $('#savedList').addEventListener('click', e => {
   if (!q.get('fy')) { renderSaved(); return; }
   $('#name').value = q.get('fn') || '';
   $('#date').value = `${q.get('fy')}-${String(+q.get('fm')).padStart(2, '0')}-${String(+q.get('fd')).padStart(2, '0')}`;
-  $('#time').value = `${String(+q.get('fh') || 12).padStart(2, '0')}:${String(+q.get('fmn') || 0).padStart(2, '0')}`;
+  $('#time').value = `${String(q.has('fh') && q.get('fh') !== '' ? Number(q.get('fh')) : 12).padStart(2, '0')}:${String(+q.get('fmn') || 0).padStart(2, '0')}`;
   $('#city').value = q.get('c') || '';
   $('#lat').value = q.get('lt') || ''; $('#lon').value = q.get('ln') || '';
   const tz = parseFloat(q.get('tz'));
-  $('#utc').value = Math.floor(tz); $('#dst').checked = Math.abs(tz % 1) > 0.01;
+  restoreTimezone(tz, q.get('dst') === '1');
   renderSaved();
   if ($('#lat').value) $('#btnCalc').click();
 })();
@@ -539,3 +556,4 @@ if (!location.search) {
   if (c) pickCity(c);
   $('#utc').value = 3; $('#dst').checked = true;
 }
+

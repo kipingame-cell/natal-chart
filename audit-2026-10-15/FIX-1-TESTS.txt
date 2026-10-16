@@ -1,0 +1,38 @@
+✔ planets 2006-06-10 18UT vs geocult (38.346179ms)
+✔ houses 2006 Placidus vs geocult (0.721085ms)
+✔ pars fortunae 2006 (ночная карта) (1.344917ms)
+✔ planets 1995-03-15 09UT vs geocult (10.648925ms)
+✔ houses 1995 Placidus vs geocult (0.333893ms)
+✔ pars fortunae 1995 (дневная карта) (1.204299ms)
+✔ сетка 2003: ровно 34 аспекта, из них 5 квинконсов (0.834082ms)
+✔ сетка 2003: ключевые аспекты geocult (0.240385ms)
+✔ сетка 2003: отсечения по орбам совпадают с geocult (0.122551ms)
+✔ timezone round trip 0, DST false (2.77452ms)
+✔ timezone round trip 0, DST true (0.855914ms)
+✔ timezone round trip 3, DST false (0.763238ms)
+✔ timezone round trip 3, DST true (0.758711ms)
+✔ timezone round trip 5.5, DST false (0.72433ms)
+✔ timezone round trip 5.5, DST true (0.791941ms)
+✔ timezone round trip 5.75, DST false (0.773723ms)
+✔ timezone round trip 5.75, DST true (0.747645ms)
+✔ timezone round trip -3.5, DST false (0.813693ms)
+✔ timezone round trip -3.5, DST true (0.860201ms)
+✔ timezone round trip -9.5, DST false (0.929072ms)
+✔ timezone round trip -9.5, DST true (0.765691ms)
+✔ timezone round trip 12.75, DST false (1.632962ms)
+✔ timezone round trip 12.75, DST true (0.733293ms)
+✔ share restoration preserves 0:0 (1.126354ms)
+✔ share restoration preserves 0:30 (0.785511ms)
+✔ share restoration preserves 12:0 (0.810417ms)
+✔ share restoration preserves 12:30 (0.701106ms)
+✔ share restoration preserves 23:0 (0.580077ms)
+✔ share restoration preserves 23:30 (0.750028ms)
+✔ saved-open uses exact effective offset and explicit DST (0.962863ms)
+ℹ tests 30
+ℹ suites 0
+ℹ pass 30
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 154.863368
