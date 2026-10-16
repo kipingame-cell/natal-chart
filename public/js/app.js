@@ -9,7 +9,6 @@ import { PLANET_IN_HOUSE } from './data/texts_planet_house.js';
 import { ASC_TEXTS, MC_TEXTS, NODE_AXIS, LILITH_IN_SIGN, SELENA_IN_SIGN, PARS_IN_HOUSE, VERTEX_TEXT, CONFIG_TEXTS, ASPECT_NATURE } from './data/texts_angles.js';
 import { pairText, PLANET_ABOUT, ELEMENT_TEXTS, CROSS_TEXTS, KARMIC_INTRO } from './data/texts_pairs.js';
 import { searchLocalCities, geocodeOnline } from './geo.js';
-import { dstSuggested } from './data/cities.js';
 import { drawWheel } from './wheel.js?v=3';
 import { buildSummary } from './summary.js?v=2';
 
@@ -60,12 +59,8 @@ function pickCity(c) {
   autoDst();
 }
 function autoDst() {
-  const d = $('#date').value;
-  if (!d) return;
-  const [y, m, dd] = d.split('-').map(Number);
-  $('#dst').checked = dstSuggested(y, m, dd);
+  // Historical UTC/DST cannot be inferred from a date alone. Keep explicit input.
 }
-$('#date').addEventListener('change', autoDst);
 $('#btnGeo').onclick = async () => {
   const q = cityInput.value.trim();
   if (q.length < 2) return toast('Введите название города');
@@ -98,8 +93,12 @@ function readForm() {
   if (!y || y < 1900 || y > 2100) throw new Error('Укажите дату рождения (1900–2100)');
   const [hh, mm] = ($('#time').value || '12:00').split(':').map(Number);
   const lat = parseFloat($('#lat').value), lon = parseFloat($('#lon').value);
-  if (!isFinite(lat) || !isFinite(lon)) throw new Error('Выберите город из списка или найдите онлайн');
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) throw new Error('Выберите город из списка или найдите онлайн');
   const utc = parseFloat($('#utc').value) + ($('#dst').checked ? 1 : 0);
+  const check = new Date(Date.UTC(y, m - 1, d));
+  if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) throw new Error('Неверная дата');
+  if (!Number.isInteger(hh) || hh < 0 || hh > 23 || !Number.isInteger(mm) || mm < 0 || mm > 59) throw new Error('Неверное время');
+  if (!Number.isFinite(utc) || utc < -12 || utc > 14) throw new Error('UTC должен быть от −12 до +14');
   const jd = julianDay(y, m, d, hh + mm / 60 - utc);
   return { jd, lat, lon, utc, dst: $('#dst').checked, name: $('#name').value.trim(), y, m, d, hh, mm };
 }
@@ -556,4 +555,5 @@ if (!location.search) {
   if (c) pickCity(c);
   $('#utc').value = 3; $('#dst').checked = true;
 }
+
 
