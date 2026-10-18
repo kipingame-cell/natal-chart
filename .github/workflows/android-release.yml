@@ -1,0 +1,37 @@
+name: Publish Android APK release
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'public/downloads/Natal-Chart-1.0.0.apk'
+      - '.github/workflows/android-release.yml'
+      - 'docs/ANDROID-1.0.0-NOTES.md'
+permissions:
+  contents: write
+concurrency:
+  group: android-release-1.0.0
+  cancel-in-progress: false
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Validate calculation references
+        run: node --test
+      - name: Verify exact APK checksum
+        working-directory: public/downloads
+        run: sha256sum --check SHA256SUMS
+      - name: Publish signed APK and checksum
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          tag=android-v1.0.0
+          if ! gh release view "$tag" > /dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --title "Натальная карта для Android 1.0.0" --notes-file docs/ANDROID-1.0.0-NOTES.md --latest
+          fi
+          gh release upload "$tag" public/downloads/Natal-Chart-1.0.0.apk public/downloads/SHA256SUMS --clobber
