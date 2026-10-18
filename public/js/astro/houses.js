@@ -62,11 +62,23 @@ function placidusCusp(num, ramcDeg, lat, eps) {
 
 // Все 12 куспидов: возвращает {cusps[1..12], asc, mc, vertex}
 export function houses(jd, lat, lonEast) {
-  const eps = meanObliquity(jd);
+  if (!Number.isFinite(jd) || !Number.isFinite(lat) || !Number.isFinite(lonEast) || Math.abs(lat) >= 90 || Math.abs(lonEast) > 180) throw new Error('Широта должна быть между −90 и +90°, долгота — от −180 до +180°');
+  const time = Astronomy.MakeTime(new Date((jd - 2440587.5) * 86400000));
+  const eps = Astronomy.e_tilt(time).tobl;
   const R = ramc(jd, lonEast);
   const mc = midheaven(R, eps);
-  const asc = ascendant(R, lat, eps);
+  let asc = ascendant(R, lat, eps);
+  // Select the eastern horizon intersection when the meridian is below it.
+  if (Math.abs(lat) >= 90 - eps && norm360(asc - mc + 180) - 180 < 0) asc = norm360(asc + 180);
   const cusps = [null, asc];
+  // Placidus has no solution beyond the polar circle; use a named whole-sign
+  // system there instead of clamping an impossible semidiurnal arc.
+  if (Math.abs(lat) >= 90 - eps) {
+    const start = Math.floor(asc / 30) * 30;
+    for (let i = 1; i <= 12; i++) cusps[i] = norm360(start + (i - 1) * 30);
+    return { cusps, asc, mc, vertex: vertex(R, lat, eps), eps, ramc: R,
+      system: 'Целые знаки', warning: 'За полярным кругом Плацидус не определён. Используются дома по целым знакам.' };
+  }
   cusps[10] = mc;
   cusps[11] = placidusCusp(11, R, lat, eps);
   cusps[12] = placidusCusp(12, R, lat, eps);
@@ -79,8 +91,17 @@ export function houses(jd, lat, lonEast) {
   cusps[8] = norm360(cusps[2] + 180);
   cusps[9] = norm360(cusps[3] + 180);
   // Вертекс: асцендент для дополнительной широты, западная сторона
-  const vtx = ascendant(norm360(R + 180), 90 - lat, eps);
-  return { cusps, asc, mc, vertex: vtx, eps, ramc: R };
+  const vtx = vertex(R, lat, eps);
+  return { cusps, asc, mc, vertex: vtx, eps, ramc: R, system: 'Плацидус', warning: null };
+}
+
+// West intersection of the prime vertical with the ecliptic. The direct
+// formula avoids tan(90-lat) at the equator and handles southern latitudes.
+export function vertex(R, lat, eps) {
+  let value = norm360(Math.atan2(sinD(lat) * cosD(R), cosD(lat) * sinD(eps) - sinD(lat) * sinD(R) * cosD(eps)) / DEG + (lat < 0 ? 0 : 180));
+  // Choose the western intersection, also for observers inside the tropics.
+  if (Math.abs(lat) <= eps && norm360(value - midheaven(R, eps) + 180) - 180 > 0) value = norm360(value + 180);
+  return value;
 }
 
 // В каком доме точка (по долготе относительно куспидов, против часовой от 1-го)
@@ -95,7 +116,17 @@ export function houseOf(lon, cusps) {
 }
 
 // Парс Фортуны: день — ASC + Луна − Солнце, ночь — ASC + Солнце − Луна
-export function parsFortunae(asc, sunLon, moonLon, sunHouse) {
-  const day = sunHouse >= 7 && sunHouse <= 12;
+export function parsFortunae(asc, sunLon, moonLon, sunHouse, isDay = null) {
+  const day = isDay === null ? sunHouse >= 7 && sunHouse <= 12 : isDay;
   return norm360(day ? asc + moonLon - sunLon : asc + sunLon - moonLon);
+}
+
+// Geocentric altitude of the Sun's centre; no atmospheric refraction.
+export function isDayChart(sunLon, sunLat, h, lat) {
+  const x = cosD(sunLat) * cosD(sunLon);
+  const y = cosD(sunLat) * sinD(sunLon) * cosD(h.eps) - sinD(sunLat) * sinD(h.eps);
+  const z = cosD(sunLat) * sinD(sunLon) * sinD(h.eps) + sinD(sunLat) * cosD(h.eps);
+  const ra = Math.atan2(y, x) / DEG;
+  const dec = asinD(z);
+  return sinD(lat) * sinD(dec) + cosD(lat) * cosD(dec) * cosD(h.ramc - ra) >= 0;
 }

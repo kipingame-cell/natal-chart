@@ -35,17 +35,119 @@
       <button id="btnGeo" type="button" class="btn-ghost">Найти онлайн</button>
       <label class="fld"><span>Широта</span><input id="lat" type="number" step="0.0001" placeholder="54.3204"></label>
       <label class="fld"><span>Долгота</span><input id="lon" type="number" step="0.0001" placeholder="40.8740"></label>
-      <label class="fld"><span>Часовой пояс</span>
+      <label class="fld fld-wide"><span>Часовой пояс IANA</span><input id="timeZone" type="text" value="Europe/Moscow" placeholder="Europe/Moscow"></label>
+      <label class="fld fld-wide fld-check"><input id="tzAuto" type="checkbox" checked><span>Авто: учесть правила часового пояса на дату рождения</span></label>
+      <label class="fld"><span>UTC вручную (при отключённом авто)</span>
         <select id="utc">
-          <option value="-2">UTC−2</option><option value="-1">UTC−1</option><option value="0">UTC+0</option>
-          <option value="1">UTC+1</option><option value="2">UTC+2</option><option value="3" selected>UTC+3 (Москва)</option>
-          <option value="4">UTC+4</option><option value="5">UTC+5</option><option value="6">UTC+6</option>
-          <option value="7">UTC+7</option><option value="8">UTC+8</option><option value="9">UTC+9</option>
-          <option value="10">UTC+10</option><option value="11">UTC+11</option><option value="12">UTC+12</option>
+          <option value="-12">UTC−12:00</option>
+          <option value="-11.75">UTC−11:45</option>
+          <option value="-11.5">UTC−11:30</option>
+          <option value="-11.25">UTC−11:15</option>
+          <option value="-11">UTC−11:00</option>
+          <option value="-10.75">UTC−10:45</option>
+          <option value="-10.5">UTC−10:30</option>
+          <option value="-10.25">UTC−10:15</option>
+          <option value="-10">UTC−10:00</option>
+          <option value="-9.75">UTC−09:45</option>
+          <option value="-9.5">UTC−09:30</option>
+          <option value="-9.25">UTC−09:15</option>
+          <option value="-9">UTC−09:00</option>
+          <option value="-8.75">UTC−08:45</option>
+          <option value="-8.5">UTC−08:30</option>
+          <option value="-8.25">UTC−08:15</option>
+          <option value="-8">UTC−08:00</option>
+          <option value="-7.75">UTC−07:45</option>
+          <option value="-7.5">UTC−07:30</option>
+          <option value="-7.25">UTC−07:15</option>
+          <option value="-7">UTC−07:00</option>
+          <option value="-6.75">UTC−06:45</option>
+          <option value="-6.5">UTC−06:30</option>
+          <option value="-6.25">UTC−06:15</option>
+          <option value="-6">UTC−06:00</option>
+          <option value="-5.75">UTC−05:45</option>
+          <option value="-5.5">UTC−05:30</option>
+          <option value="-5.25">UTC−05:15</option>
+          <option value="-5">UTC−05:00</option>
+          <option value="-4.75">UTC−04:45</option>
+          <option value="-4.5">UTC−04:30</option>
+          <option value="-4.25">UTC−04:15</option>
+          <option value="-4">UTC−04:00</option>
+          <option value="-3.75">UTC−03:45</option>
+          <option value="-3.5">UTC−03:30</option>
+          <option value="-3.25">UTC−03:15</option>
+          <option value="-3">UTC−03:00</option>
+          <option value="-2.75">UTC−02:45</option>
+          <option value="-2.5">UTC−02:30</option>
+          <option value="-2.25">UTC−02:15</option>
+          <option value="-2">UTC−02:00</option>
+          <option value="-1.75">UTC−01:45</option>
+          <option value="-1.5">UTC−01:30</option>
+          <option value="-1.25">UTC−01:15</option>
+          <option value="-1">UTC−01:00</option>
+          <option value="-0.75">UTC−00:45</option>
+          <option value="-0.5">UTC−00:30</option>
+          <option value="-0.25">UTC−00:15</option>
+          <option value="0">UTC+00:00</option>
+          <option value="0.25">UTC+00:15</option>
+          <option value="0.5">UTC+00:30</option>
+          <option value="0.75">UTC+00:45</option>
+          <option value="1">UTC+01:00</option>
+          <option value="1.25">UTC+01:15</option>
+          <option value="1.5">UTC+01:30</option>
+          <option value="1.75">UTC+01:45</option>
+          <option value="2">UTC+02:00</option>
+          <option value="2.25">UTC+02:15</option>
+          <option value="2.5">UTC+02:30</option>
+          <option value="2.75">UTC+02:45</option>
+          <option value="3" selected>UTC+03:00</option>
+          <option value="3.25">UTC+03:15</option>
+          <option value="3.5">UTC+03:30</option>
+          <option value="3.75">UTC+03:45</option>
+          <option value="4">UTC+04:00</option>
+          <option value="4.25">UTC+04:15</option>
+          <option value="4.5">UTC+04:30</option>
+          <option value="4.75">UTC+04:45</option>
+          <option value="5">UTC+05:00</option>
+          <option value="5.25">UTC+05:15</option>
+          <option value="5.5">UTC+05:30</option>
+          <option value="5.75">UTC+05:45</option>
+          <option value="6">UTC+06:00</option>
+          <option value="6.25">UTC+06:15</option>
+          <option value="6.5">UTC+06:30</option>
+          <option value="6.75">UTC+06:45</option>
+          <option value="7">UTC+07:00</option>
+          <option value="7.25">UTC+07:15</option>
+          <option value="7.5">UTC+07:30</option>
+          <option value="7.75">UTC+07:45</option>
+          <option value="8">UTC+08:00</option>
+          <option value="8.25">UTC+08:15</option>
+          <option value="8.5">UTC+08:30</option>
+          <option value="8.75">UTC+08:45</option>
+          <option value="9">UTC+09:00</option>
+          <option value="9.25">UTC+09:15</option>
+          <option value="9.5">UTC+09:30</option>
+          <option value="9.75">UTC+09:45</option>
+          <option value="10">UTC+10:00</option>
+          <option value="10.25">UTC+10:15</option>
+          <option value="10.5">UTC+10:30</option>
+          <option value="10.75">UTC+10:45</option>
+          <option value="11">UTC+11:00</option>
+          <option value="11.25">UTC+11:15</option>
+          <option value="11.5">UTC+11:30</option>
+          <option value="11.75">UTC+11:45</option>
+          <option value="12">UTC+12:00</option>
+          <option value="12.25">UTC+12:15</option>
+          <option value="12.5">UTC+12:30</option>
+          <option value="12.75">UTC+12:45</option>
+          <option value="13">UTC+13:00</option>
+          <option value="13.25">UTC+13:15</option>
+          <option value="13.5">UTC+13:30</option>
+          <option value="13.75">UTC+13:45</option>
+          <option value="14">UTC+14:00</option>
         </select></label>
-      <label class="fld fld-check"><input id="dst" type="checkbox"><span>Летнее время (+1 ч, укажите вручную для даты и места)</span></label>
+      <label class="fld fld-wide fld-check"><input id="dst" type="checkbox"><span>Летнее время (+1 ч, укажите вручную для даты и места)</span></label>
     </div>
-    <p class="hint">Укажите UTC-сдвиг и летнее время вручную для выбранного места и даты. Исторические правила часовых поясов автоматически не определяются.</p>
+    <p class="hint">Авто использует исторические правила IANA из системы. Выберите город из списка. Для другого места задайте его IANA-пояс или отключите авто и укажите UTC и летнее время вручную. Время рождения влияет на дома и углы карты.</p>
     <div class="form-actions">
       <button id="btnCalc" class="btn-primary">Рассчитать карту</button>
       <button id="btnShare" class="btn-ghost">Поделиться ссылкой</button>
@@ -89,8 +191,14 @@
     </div>
   </section>
 
+  <section class="form-card android-download">
+    <h2>Натальная карта для Android</h2>
+    <p>Версия 1.0.0 · Android 8.0+ · расчёты и PDF без интернета</p>
+    <a class="btn-primary" href="downloads/Natal-Chart-1.0.0.apk" download>Скачать APK</a>
+    <p class="hint"><a href="https://github.com/kipingame-cell/natal-chart/releases/tag/android-v1.0.0">Релиз и контрольная сумма</a></p>
+  </section>
   <footer class="site-footer">
-    <p>Расчёт выполняется локально в браузере на основе библиотеки Astronomy Engine (MIT). Положения Хирона, Селены и Лилит — приближённые (помечены ≈). Материалы носят ознакомительный характер.</p>
+    <p>Расчёт выполняется локально в браузере на основе библиотеки Astronomy Engine (MIT). Хирон — двухтельное приближение, Селена — условная модель (≈); Лилит — средний апогей. Истинный узел вычисляется по орбите Луны. За полярным кругом используются дома по целым знакам. Материалы носят ознакомительный характер.</p>
   </footer>
 </main>
 
@@ -98,7 +206,7 @@
 <script>var exports = {};</script>
 <script src="vendor/astronomy.js"></script>
 <script>globalThis.Astronomy = exports;</script>
-<script type="module" src="js/app.js?v=6"></script>
+<script type="module" src="js/app.js?v=7"></script>
 </body>
 </html>
 

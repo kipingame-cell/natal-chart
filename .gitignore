@@ -1,0 +1,5 @@
+android/build/
+android/dist/
+android/signing/
+*.idsig
+node_modules/

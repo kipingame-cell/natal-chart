@@ -1,6 +1,7 @@
 // Главный модуль приложения: форма, расчёт, рендер отчёта.
 import { julianDay, computePoints, norm360 } from './astro/core.js';
-import { houses, houseOf, parsFortunae } from './astro/houses.js';
+import { resolveLocalTime } from './astro/timezone.js';
+import { houses, houseOf, parsFortunae, isDayChart } from './astro/houses.js';
 import { findAspects, findConfigurations, ASPECTS } from './astro/aspects.js';
 import { planetStrength, dignity } from './astro/dyn.js';
 import { SIGNS, PLANETS, signOf, fmtDeg, ELEMENT_NAMES, CROSS_NAMES } from './astro/format.js';
@@ -56,7 +57,10 @@ function pickCity(c) {
   $('#lat').value = c.lat.toFixed(4);
   $('#lon').value = c.lon.toFixed(4);
   if (c.utc !== null && c.utc !== undefined) $('#utc').value = c.utc;
-  autoDst();
+  $('#timeZone').value = c.timeZone || '';
+  $('#tzAuto').checked = Boolean(c.timeZone);
+  $('#dst').checked = false;
+  updateTimezoneControls();
 }
 function autoDst() {
   // Historical UTC/DST cannot be inferred from a date alone. Keep explicit input.
@@ -93,14 +97,17 @@ function readForm() {
   if (!y || y < 1900 || y > 2100) throw new Error('Укажите дату рождения (1900–2100)');
   const [hh, mm] = ($('#time').value || '12:00').split(':').map(Number);
   const lat = parseFloat($('#lat').value), lon = parseFloat($('#lon').value);
-  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) throw new Error('Выберите город из списка или найдите онлайн');
-  const utc = parseFloat($('#utc').value) + ($('#dst').checked ? 1 : 0);
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) >= 90 || Math.abs(lon) > 180) throw new Error('Выберите город из списка или найдите онлайн');
+  let utc = parseFloat($('#utc').value) + ($('#dst').checked ? 1 : 0);
   const check = new Date(Date.UTC(y, m - 1, d));
   if (check.getUTCFullYear() !== y || check.getUTCMonth() !== m - 1 || check.getUTCDate() !== d) throw new Error('Неверная дата');
   if (!Number.isInteger(hh) || hh < 0 || hh > 23 || !Number.isInteger(mm) || mm < 0 || mm > 59) throw new Error('Неверное время');
+  const automatic = $('#tzAuto').checked;
+  const timeZone = automatic ? $('#timeZone').value.trim() : null;
+  if (automatic) utc = resolveLocalTime(y, m, d, hh, mm, timeZone).utc;
   if (!Number.isFinite(utc) || utc < -12 || utc > 14) throw new Error('UTC должен быть от −12 до +14');
   const jd = julianDay(y, m, d, hh + mm / 60 - utc);
-  return { jd, lat, lon, utc, dst: $('#dst').checked, name: $('#name').value.trim(), y, m, d, hh, mm };
+  return { jd, lat, lon, utc, city: $('#city').value || '', dst: automatic ? false : $('#dst').checked, timeZone, name: $('#name').value.trim(), y, m, d, hh, mm };
 }
 
 function calc(form) {
@@ -108,10 +115,10 @@ function calc(form) {
   const h = houses(form.jd, form.lat, form.lon);
   for (const p of pts) p.house = houseOf(p.lon, h.cusps);
   const sun = pts.find(p => p.id === 'Sun'), moon = pts.find(p => p.id === 'Moon');
-  const pf = parsFortunae(h.asc, sun.lon, moon.lon, sun.house);
+  const pf = parsFortunae(h.asc, sun.lon, moon.lon, sun.house, isDayChart(sun.lon, sun.lat, h, form.lat));
   pts.push({ id: 'ParsFortuna', lon: pf, lat: 0, retro: false, house: houseOf(pf, h.cusps) });
   pts.push({ id: 'Vertex', lon: h.vertex, lat: 0, retro: false, house: houseOf(h.vertex, h.cusps) });
-  pts.push({ id: 'SouthNode', lon: norm360(pts.find(p => p.id === 'NorthNode').lon + 180), lat: 0, retro: true, house: houseOf(norm360(pts.find(p => p.id === 'NorthNode').lon + 180), h.cusps) });
+  pts.push({ id: 'SouthNode', lon: norm360(pts.find(p => p.id === 'NorthNode').lon + 180), lat: 0, retro: pts.find(p => p.id === 'NorthNode').retro, speed: pts.find(p => p.id === 'NorthNode').speed, house: houseOf(norm360(pts.find(p => p.id === 'NorthNode').lon + 180), h.cusps) });
 
   const aspectPts = [...pts, { id: 'ASC', lon: h.asc }, { id: 'MC', lon: h.mc }];
   const aspects = findAspects(aspectPts);
@@ -136,7 +143,8 @@ function render(chart) {
   $('#results').hidden = false;
   const f = chart.form;
   $('#chartTitle').textContent = f.name ? `${f.name} — натальная карта` : 'Натальная карта';
-  $('#chartSub').textContent = `${String(f.d).padStart(2, '0')}.${String(f.m).padStart(2, '0')}.${f.y}, ${String(f.hh).padStart(2, '0')}:${String(f.mm).padStart(2, '0')} (UTC${f.utc >= 0 ? '+' : ''}${f.utc}) · ${$('#city').value} · широта ${f.lat.toFixed(2)}, долгота ${f.lon.toFixed(2)} · дома: Плацидус`;
+  $('#chartSub').textContent = `${String(f.d).padStart(2, '0')}.${String(f.m).padStart(2, '0')}.${f.y}, ${String(f.hh).padStart(2, '0')}:${String(f.mm).padStart(2, '0')} (UTC${f.utc >= 0 ? '+' : ''}${f.utc}) · ${f.city} · широта ${f.lat.toFixed(2)}, долгота ${f.lon.toFixed(2)} · дома: ${chart.h.system}${f.timeZone ? ` · ${f.timeZone}` : ''}`;
+  if (chart.h.warning) toast(chart.h.warning);
 
   drawWheel($('#wheelSvg'), {
     points: chart.pts.filter(p => [...MAIN_PLANETS, 'Chiron', 'NorthNode'].includes(p.id)),
@@ -170,14 +178,14 @@ function renderOverview(c) {
     }).join('');
   const hrows = c.h.cusps.slice(1).map((cu, i) => {
     const f = fmtDeg(cu);
-    return `<tr><td>${i + 1}-й дом${i === 0 ? ' (ASC)' : i === 9 ? ' (MC)' : ''}</td><td>${f.text}</td></tr>`;
+    return `<tr><td>${i + 1}-й дом${c.h.system === 'Плацидус' ? (i === 0 ? ' (ASC)' : i === 9 ? ' (MC)' : '') : ''}</td><td>${f.text}</td></tr>`;
   }).join('');
   const confRows = c.configs.map(cf => `<tr><td><b>${cf.type}</b></td><td>${cf.planets.map(p => `${gl(p)} ${nm(p)}`).join(' — ')}</td></tr>`).join('') || '<tr><td colspan="2">Выраженных конфигураций нет</td></tr>';
   $('#tab-overview').innerHTML = `
     <div class="card" open><summary><div class="card-head"><span class="card-title">Планеты: положения</span><span class="card-sub">долгота, дом, ретроградность</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><table class="ntable"><thead><tr><th>Точка</th><th>Долгота</th><th>Дом</th><th>Сила</th><th>Гармония</th></tr></thead><tbody>${rows}</tbody></table></div></div>
-    <div class="card"><summary><div class="card-head"><span class="card-title">Дома (Плацидус)</span><span class="card-sub">куспиды 12 домов</span></div><span class="card-chevron">▾</span></summary>
-      <div class="card-body"><table class="ntable"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${hrows}</tbody></table></div></div>
+    <div class="card"><summary><div class="card-head"><span class="card-title">Дома (${c.h.system})</span><span class="card-sub">куспиды 12 домов</span></div><span class="card-chevron">▾</span></summary>
+      <div class="card-body">${c.h.warning ? `<p class="hint">${esc(c.h.warning)}</p>` : ''}<table class="ntable"><thead><tr><th>Дом</th><th>Куспид</th></tr></thead><tbody>${hrows}</tbody></table></div></div>
     <div class="card"><summary><div class="card-head"><span class="card-title">Конфигурации аспектов</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><table class="ntable"><tbody>${confRows}</tbody></table></div></div>`;
 }
@@ -393,9 +401,9 @@ function renderKarma(c) {
       <div class="card-body">${retros.map(p => `<div class="blk"><span class="blk-label warn">${gl(p.id)} ${nm(p.id)} R</span><p>${esc(RETRO_TEXT[p.id])}</p></div>`).join('')}</div></div>` : ''}
     <div class="card" open><summary><div class="card-head"><span class="card-title">Лунные узлы</span><span class="card-sub">☊ ${degStr(nn.lon)} (${nn.house}-й дом) · ☋ ${degStr(sn.lon)} (${sn.house}-й дом)</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><p>Лунные узлы символизируют ось развития: Нисходящий (Южный) узел — опыт прошлого, Восходящий (Северный) — опыт, который предстоит приобрести.</p><p>${esc(axis)}</p></div></div>
-    <div class="card"><summary><div class="card-head"><span class="card-title">Селена (Белая Луна)</span><span class="card-sub">${degStr(sel.lon)}, ${sel.house}-й дом</span></div><span class="card-chevron">▾</span></summary>
+    <div class="card"><summary><div class="card-head"><span class="card-title">Селена (Белая Луна) ≈</span><span class="card-sub">${degStr(sel.lon)}, ${sel.house}-й дом</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><p>Белая Луна — светлая карма: область, где накоплено больше всего добрых дел и где сияет дорога к успеху при проявлении высших качеств знака.</p><p>${esc(SELENA_IN_SIGN[Math.floor(sel.lon / 30)])}</p></div></div>
-    <div class="card"><summary><div class="card-head"><span class="card-title">Лилит (Чёрная Луна)</span><span class="card-sub">${degStr(lil.lon)}, ${lil.house}-й дом</span></div><span class="card-chevron">▾</span></summary>
+    <div class="card"><summary><div class="card-head"><span class="card-title">Лилит (средний апогей)</span><span class="card-sub">${degStr(lil.lon)}, ${lil.house}-й дом</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><p>Чёрная Луна — теневая точка: искушения, соблазны и уроки, которые нужно осознать.</p><p>${esc(LILITH_IN_SIGN[Math.floor(lil.lon / 30)])}</p></div></div>
     <div class="card"><summary><div class="card-head"><span class="card-title">Парс Фортуны (Колесо Фортуны)</span><span class="card-sub">${degStr(pf.lon)}, ${pf.house}-й дом</span></div><span class="card-chevron">▾</span></summary>
       <div class="card-body"><p>${esc(PARS_IN_HOUSE[pf.house - 1])}</p></div></div>
@@ -462,9 +470,9 @@ $('#btnShare').onclick = async () => {  if (!lastChart) return toast('Снача
   const f = lastChart.form;
   const q = new URLSearchParams({
     fn: f.name, fd: f.d, fm: f.m, fy: f.y, fh: f.hh, fmn: f.mm,
-    c: $('#city').value, lt: f.lat, ln: f.lon, tz: f.utc, dst: f.dst ? '1' : '0',
+    c: f.city, lt: f.lat, ln: f.lon, tz: f.utc, dst: f.dst ? '1' : '0',
   });
-  const link = location.origin + location.pathname + '?' + q.toString();
+  const link = 'https://kipingame-cell.github.io/natal-chart/?' + q.toString();
   try { await navigator.clipboard.writeText(link); toast('Ссылка скопирована'); }
   catch { prompt('Скопируйте ссылку:', link); }
 };
@@ -475,7 +483,7 @@ $('#btnPdf').onclick = async () => {
   btn.disabled = true; btn.textContent = 'Готовим PDF…';
   try {
     const { downloadPdf } = await import('./pdf.js?v=5');
-    await downloadPdf(lastChart, $('#city').value, $('#wheelSvg'));
+    await downloadPdf(lastChart, lastChart.form.city, $('#wheelSvg'));
     toast('PDF сохранён');
   } catch (e) {
     toast('Не удалось создать PDF: ' + e.message);
@@ -486,16 +494,22 @@ $('#btnPdf').onclick = async () => {
 
 // ---------- Сохранённые ----------
 const LS_KEY = 'natal.saved';
+function readSaved() {
+  try {
+    const value = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+    return Array.isArray(value) ? value.filter(r => r && typeof r === 'object' && Number.isFinite(r.y) && Number.isFinite(r.utc)).slice(0, 20) : [];
+  } catch { return []; }
+}
 function saveCurrent() {
   const f = lastChart.form;
-  const rec = { name: f.name || 'Без имени', city: $('#city').value, y: f.y, m: f.m, d: f.d, hh: f.hh, mm: f.mm, lat: f.lat, lon: f.lon, utc: f.utc, dst: f.dst };
-  const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]').filter(x => JSON.stringify(x) !== JSON.stringify(rec));
+  const rec = { name: f.name || 'Без имени', city: f.city, y: f.y, m: f.m, d: f.d, hh: f.hh, mm: f.mm, lat: f.lat, lon: f.lon, utc: f.utc, dst: f.dst };
+  const arr = readSaved().filter(x => JSON.stringify(x) !== JSON.stringify(rec));
   arr.unshift(rec);
-  localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 20)));
+  try { localStorage.setItem(LS_KEY, JSON.stringify(arr.slice(0, 20))); } catch { toast('Карта рассчитана, но хранилище недоступно'); }
   renderSaved();
 }
 function renderSaved() {
-  const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+  const arr = readSaved();
   $('#savedList').innerHTML = arr.map((r, i) => `<div class="saved-item">
     <button class="btn-ghost saved-open" data-i="${i}"><b>${esc(r.name)}</b><span>${String(r.d).padStart(2, '0')}.${String(r.m).padStart(2, '0')}.${r.y} ${String(r.hh).padStart(2, '0')}:${String(r.mm).padStart(2, '0')} · ${esc(r.city)}</span></button>
     <button class="saved-del" data-i="${i}" title="Удалить">✕</button></div>`).join('');
@@ -503,7 +517,7 @@ function renderSaved() {
 }
 $('#savedList').addEventListener('click', e => {
   const open = e.target.closest('.saved-open'), del = e.target.closest('.saved-del');
-  const arr = JSON.parse(localStorage.getItem(LS_KEY) || '[]');
+  const arr = readSaved();
   if (del) { arr.splice(+del.dataset.i, 1); localStorage.setItem(LS_KEY, JSON.stringify(arr)); renderSaved(); return; }
   if (open) {
     const r = arr[+open.dataset.i];
@@ -511,14 +525,16 @@ $('#savedList').addEventListener('click', e => {
     $('#time').value = `${String(r.hh).padStart(2, '0')}:${String(r.mm).padStart(2, '0')}`;
     $('#city').value = r.city; $('#lat').value = r.lat; $('#lon').value = r.lon;
     restoreTimezone(r.utc, r.dst === true);
+    updateTimezoneControls();
     $('#btnCalc').click();
   }
 });
 
 // utc is the effective offset; legacy records do not encode DST separately.
 function restoreTimezone(utc, dst = false) {
+  $('#tzAuto').checked = false;
   const total = Number(utc);
-  if (!Number.isFinite(total) || total < -12 || total > 15) throw new Error('Некорректное смещение UTC');
+  if (!Number.isFinite(total) || total < -12 || total > 14) throw new Error('Некорректное смещение UTC');
   const base = total - (dst ? 1 : 0);
   const select = $('#utc');
   if (!Array.from(select.options).some(o => Number(o.value) === base)) {
@@ -542,7 +558,7 @@ function restoreTimezone(utc, dst = false) {
   $('#city').value = q.get('c') || '';
   $('#lat').value = q.get('lt') || ''; $('#lon').value = q.get('ln') || '';
   const tz = parseFloat(q.get('tz'));
-  restoreTimezone(tz, q.get('dst') === '1');
+  try { restoreTimezone(tz, q.get('dst') === '1'); } catch (e) { toast(e.message); renderSaved(); return; }
   renderSaved();
   if ($('#lat').value) $('#btnCalc').click();
 })();
@@ -553,7 +569,16 @@ if (!location.search) {
   cityInput.value = 'Шилово, Россия';
   const c = searchLocalCities('Шилово')[0];
   if (c) pickCity(c);
-  $('#utc').value = 3; $('#dst').checked = true;
+  $('#timeZone').value = 'Europe/Moscow'; $('#tzAuto').checked = true; $('#dst').checked = false;
 }
 
 
+
+function updateTimezoneControls() {
+  const auto = $('#tzAuto').checked;
+  $('#utc').disabled = auto;
+  $('#dst').disabled = auto;
+  $('#timeZone').disabled = !auto;
+}
+$('#tzAuto').addEventListener('change', updateTimezoneControls);
+updateTimezoneControls();

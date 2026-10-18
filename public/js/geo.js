@@ -1,5 +1,5 @@
 // Геокодинг: встроенная база городов + Nominatim (OpenStreetMap) как резерв.
-import { CITIES } from './data/cities.js';
+import { CITIES, CITY_TIMEZONES } from './data/cities.js';
 
 export function searchLocalCities(query, limit = 8) {
   const q = query.trim().toLowerCase();
@@ -7,7 +7,7 @@ export function searchLocalCities(query, limit = 8) {
   return CITIES
     .filter(c => c[0].toLowerCase().includes(q))
     .slice(0, limit)
-    .map(([name, lat, lon, utc]) => ({ name, lat, lon, utc }));
+    .map(([name, lat, lon, utc]) => ({ name, lat, lon, utc, timeZone: CITY_TIMEZONES[name] }));
 }
 
 // Nominatim: отправляет наружу только название города (дата/время не передаются)

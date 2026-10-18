@@ -1,6 +1,6 @@
 // Астро-ядро: положения планет и фиктивных точек.
-// Эфемериды — Astronomy Engine (MIT, Don Cross), точность ±1 угл. минута.
-// Селена/Лилит — средние линейные модели, откалиброванные по geocult (6 дат, 1995–2015).
+// Эфемериды — Astronomy Engine (MIT, Don Cross), типичная точность порядка 1 угл. минуты (см. проверку Swiss в docs).
+// Селена — условная линейная модель; Лилит — средний апогей Луны.
 // Хирон — кеплерово приближение по осцулирующим элементам JPL Horizons (эпоха 2006).
 
 const DEG = Math.PI / 180;
@@ -78,17 +78,26 @@ function chironGeo(jd, astroTime) {
   return { lon: norm360(lon), lat };
 }
 
-// Средний восходящий узел (Meeus) + главные периодические члены истинного узла
-function northNode(jd, sunLon) {
-  const T = (jd - J2000) / 36525;
-  const mean = norm360(125.0445479 - 1934.1362891 * T + 0.0020754 * T * T + T * T * T / 467441 - T * T * T * T / 60616000);
-  const tru = norm360(mean + 1.4979 * sinD(2 * (sunLon - mean)) + 0.15 * sinD(2 * sunLon));
-  return { mean, true: tru };
+// Osculating ascending node: intersection of the lunar orbital plane with
+// the true ecliptic of date. GeoMoonState and its velocity share the EQJ frame.
+export function trueNorthNode(jd) {
+  const time = Astronomy.MakeTime(new Date((jd - 2440587.5) * 86400000));
+  const v = Astronomy.RotateState(Astronomy.Rotation_EQJ_ECT(time), Astronomy.GeoMoonState(time));
+  const hx = v.y * v.vz - v.z * v.vy;
+  const hy = v.z * v.vx - v.x * v.vz;
+  return norm360(Math.atan2(hx, -hy) / DEG);
 }
 
-// Лилит (средний лунный апогей + 180°): линейная модель, калибровка по geocult
-// на 6 датах 1995–2015 (макс. ошибка 0.14°)
-const LILITH = { l0: 263.34853967, jd0: J2000, rate: 0.111398014 };
+// Mean lunar apogee (Meeus, mean perigee + 180 degrees), equinox of date.
+export function meanLilith(jd) {
+  const time = Astronomy.MakeTime(new Date((jd - 2440587.5) * 86400000));
+  const T = time.tt / 36525;
+  const perigee = 83.3532465 + 4069.0137287*T - 0.01032*T*T - T*T*T/80053 + T*T*T*T/18999000;
+  const node = 125.0445479 - 1934.1362891*T + 0.0020754*T*T + T*T*T/467441 - T*T*T*T/60616000;
+  // Project the mean perigee from its inclined orbit into the ecliptic.
+  const arg = (perigee - node) * DEG;
+  return norm360(node + Math.atan2(Math.sin(arg) * cosD(5.1453964), Math.cos(arg)) / DEG + 180 + Astronomy.e_tilt(time).dpsi / 3600);
+}
 
 // Селена (Белая Луна): линейная модель, период ровно 7 лет, калибровка по geocult
 // на 6 датах 1995–2015 (макс. ошибка 0.02°)
@@ -99,7 +108,9 @@ const BODIES = ['Sun', 'Moon', 'Mercury', 'Venus', 'Mars', 'Jupiter', 'Saturn', 
 // Полный набор точек карты. Возвращает массив {id, name, lon, lat, speed, retro}
 export function computePoints(jd) {
   const astroTime = Astronomy.MakeTime(new Date((jd - 2440587.5) * 86400000));
-  const t1 = Astronomy.MakeTime(new Date((jd + 1 - 2440587.5) * 86400000));
+  const delta = 1 / 1440; // central derivative over two minutes, deg/day
+  const t1 = Astronomy.MakeTime(new Date((jd + delta - 2440587.5) * 86400000));
+  const t0 = Astronomy.MakeTime(new Date((jd - delta - 2440587.5) * 86400000));
   const pts = [];
   const lonAt = (body, tt) => body === 'Moon'
     ? norm360(Astronomy.EclipticGeoMoon(tt).lon)
@@ -109,22 +120,21 @@ export function computePoints(jd) {
     const ll = b === 'Moon'
       ? { lon: norm360(Astronomy.EclipticGeoMoon(astroTime).lon), lat: Astronomy.EclipticGeoMoon(astroTime).lat }
       : geoEclLonLat(b, astroTime);
-    const speed = norm360(lonAt(b, t1) - ll.lon + 180) - 180;
+    const speed = (norm360(lonAt(b, t1) - lonAt(b, t0) + 180) - 180) / (2 * delta);
     pts.push({ id: b, lon: ll.lon, lat: ll.lat, speed, retro: speed < 0 });
   }
 
   // Хирон
   const ch = chironGeo(jd, astroTime);
-  const ch1 = chironGeo(jd + 1, t1);
-  const chSpeed = norm360(ch1.lon - ch.lon + 180) - 180;
+  const ch1 = chironGeo(jd + delta, t1);
+  const ch0 = chironGeo(jd - delta, t0);
+  const chSpeed = (norm360(ch1.lon - ch0.lon + 180) - 180) / (2 * delta);
   pts.push({ id: 'Chiron', lon: ch.lon, lat: ch.lat, speed: chSpeed, retro: chSpeed < 0, approx: true });
 
-  const sunLon = pts[0].lon;
-  // Узлы (истинный восходящий)
-  const node = northNode(jd, sunLon);
-  pts.push({ id: 'NorthNode', lon: node.true, lat: 0, speed: -0.053, retro: true, mean: node.mean });
-  // Селена, Лилит
-  pts.push({ id: 'Selena', lon: norm360(SELENA.l0 + SELENA.rate * (jd - SELENA.jd0)), lat: 0, speed: SELENA.rate, retro: false, mean: true });
-  pts.push({ id: 'Lilith', lon: norm360(LILITH.l0 + LILITH.rate * (jd - LILITH.jd0)), lat: 0, speed: LILITH.rate, retro: false, mean: true });
+  const nodeLon = trueNorthNode(jd);
+  const nodeSpeed = (norm360(trueNorthNode(jd + delta) - trueNorthNode(jd - delta) + 180) - 180) / (2 * delta);
+  pts.push({ id: 'NorthNode', lon: nodeLon, lat: 0, speed: nodeSpeed, retro: nodeSpeed < 0 });
+  pts.push({ id: 'Selena', lon: norm360(SELENA.l0 + SELENA.rate * (jd - SELENA.jd0)), lat: 0, speed: SELENA.rate, retro: false, approx: true });
+  pts.push({ id: 'Lilith', lon: meanLilith(jd), lat: 0, speed: (norm360(meanLilith(jd + delta) - meanLilith(jd - delta) + 180) - 180) / (2 * delta), retro: false, mean: true });
   return pts;
 }

@@ -43,12 +43,13 @@ export function signOf(lon) {
 
 export function fmtDeg(lon, withSeconds = true) {
   const l = ((lon % 360) + 360) % 360;
-  const s = signOf(l);
-  const inSign = l % 30;
-  const d = Math.floor(inSign);
-  const mFull = (inSign - d) * 60;
-  const m = Math.floor(mFull);
-  const sec = Math.round((mFull - m) * 60);
+  const units = withSeconds ? 3600 : 60;
+  const total = (withSeconds ? Math.round(l * units) : Math.floor(l * units)) % (360 * units);
+  const s = SIGNS[Math.floor(total / (30 * units))];
+  const within = total % (30 * units);
+  const d = Math.floor(within / units);
+  const m = Math.floor((within % units) / (withSeconds ? 60 : 1));
+  const sec = withSeconds ? within % 60 : 0;
   const secStr = withSeconds ? `${String(sec).padStart(2, '0')}″` : '';
   return { sign: s, text: `${s.glyph} ${s.name} ${d}°${String(m).padStart(2, '0')}′${secStr}` };
 }

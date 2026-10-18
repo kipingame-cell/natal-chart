@@ -3,7 +3,7 @@
    недостающие значки подставляются из DejaVu автоматически. */
 @font-face{
   font-family:'DejaVu Sans';
-  src:url('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf') format('truetype');
+  src:url('../vendor/DejaVuSans.ttf') format('truetype');
   font-weight:normal;font-style:normal;font-display:swap;
 }
 :root{
@@ -195,3 +195,6 @@ button,input,select{font:inherit;color:inherit}
 @media (max-width:400px){
   .form-grid{grid-template-columns:1fr}
 }
+
+.fld-check input{width:18px;height:18px;flex:0 0 18px;padding:0}
+input:disabled,select:disabled{opacity:.5}

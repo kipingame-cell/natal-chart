@@ -6,7 +6,7 @@ const path=require('node:path');
 const src=fs.readFileSync(path.join(__dirname,'../public/js/app.js'),'utf8');
 function context(query='') {
  const elements={}; const $=key=>elements[key] ||= {value:'',checked:false,options:[],appendChild(o){this.options.push(o)},click(){}};
- const ctx={$ ,URLSearchParams,location:{search:query},document:{createElement:()=>({})},renderSaved(){}};
+ const ctx={$ ,URLSearchParams,location:{search:query},document:{createElement:()=>({})},renderSaved(){},updateTimezoneControls(){}};
  vm.createContext(ctx);
  vm.runInContext(src.slice(src.indexOf('function restoreTimezone('),src.indexOf('// ---------- Восстановление из URL')),ctx);
  return {ctx,$};

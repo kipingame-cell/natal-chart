@@ -9,10 +9,6 @@ import { pairText, PLANET_ABOUT, KARMIC_INTRO } from './data/texts_pairs.js';
 import { buildSummary, MAIN_PLANETS } from './summary.js?v=2';
 
 const SITE_URL = 'https://kipingame-cell.github.io/natal-chart/';
-const CDN = [
-  'https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.12',
-  'https://cdn.jsdelivr.net/npm/pdfmake@0.2.12/build',
-];
 function loadScript(src) {
   return new Promise((res, rej) => {
     const s = document.createElement('script');
@@ -21,16 +17,10 @@ function loadScript(src) {
   });
 }
 async function ensurePdfMake() {
-  if (window.pdfMake) return;
-  let lastErr = null;
-  for (const base of CDN) {
-    try {
-      await loadScript(`${base}/pdfmake.min.js`);
-      await loadScript(`${base}/vfs_fonts.min.js`);
-      if (window.pdfMake) return;
-    } catch (e) { lastErr = e; }
-  }
-  throw new Error('Не удалось загрузить PDF-модуль (' + (lastErr?.message || 'сеть') + ')');
+  if (window.pdfMake?.vfs) return;
+  await loadScript('vendor/pdfmake.min.js');
+  await loadScript('vendor/vfs_fonts.js');
+  if (!window.pdfMake?.vfs) throw new Error('Не удалось загрузить локальный PDF-модуль');
 }
 
 // PT Serif (кириллица) для заголовков; при недоступности сети — обычный Roboto
@@ -46,8 +36,8 @@ function ensureSerif() {
     };
     const load = async url => toB64(await (await fetch(url)).arrayBuffer());
     const [reg, bold] = await Promise.all([
-      load('https://fonts.gstatic.com/s/ptserif/v19/EJRVQgYoZZY2vCFuvDFR.ttf'),
-      load('https://fonts.gstatic.com/s/ptserif/v19/EJRSQgYoZZY2vCFuvAnt65qV.ttf'),
+      load('vendor/PT_Serif-Web-Regular.ttf'),
+      load('vendor/PT_Serif-Web-Bold.ttf'),
     ]);
     pdfMake.vfs['PTSerif-Regular.ttf'] = reg;
     pdfMake.vfs['PTSerif-Bold.ttf'] = bold;
@@ -67,7 +57,7 @@ let glyphFontCss = null;
 function ensureGlyphFont() {
   if (glyphFontCss) return glyphFontCss;
   glyphFontCss = (async () => {
-    const buf = await (await fetch('https://cdn.jsdelivr.net/npm/dejavu-fonts-ttf@2.37.3/ttf/DejaVuSans.ttf')).arrayBuffer();
+    const buf = await (await fetch('vendor/DejaVuSans.ttf')).arrayBuffer();
     const b = new Uint8Array(buf);
     let s = '';
     for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000));
@@ -273,7 +263,7 @@ export async function downloadPdf(c, cityName, svg) {
   content.push({ svg: RULE_SVG(170, 10), alignment: 'center', margin: [0, 12, 0, 12] });
   if (f.name) content.push({ text: f.name, style: 'coverName', alignment: 'center', margin: [0, 0, 0, 4] });
   content.push({ text: dateLine, style: 'coverSub', alignment: 'center' });
-  content.push({ text: `${f.lat.toFixed(2)}, ${f.lon.toFixed(2)} · дома: Плацидус`, style: 'coverSub', alignment: 'center', margin: [0, 2, 0, 18] });
+  content.push({ text: `${f.lat.toFixed(2)}, ${f.lon.toFixed(2)} · дома: ${c.h.system || 'Плацидус'}`, style: 'coverSub', alignment: 'center', margin: [0, 2, 0, 18] });
   if (wheelPng) content.push({ image: wheelPng, width: 400, alignment: 'center' });
   content.push({ text: 'Соединение 0° · секстиль 60° · квадрат 90° · тригон 120° · квинконс 150° · оппозиция 180°', style: 'legend', alignment: 'center', margin: [0, 12, 0, 0], pageBreak: 'after' });
 
@@ -305,9 +295,10 @@ export async function downloadPdf(c, cityName, svg) {
   /* ---- дома ---- */
   const hRows = [[th('Дом'), th('Куспид'), th('Знак')]];
   c.h.cusps.slice(1).forEach((cu, i) => hRows.push([
-    td(`${i + 1}${i === 0 ? ' (ASC)' : i === 9 ? ' (MC)' : ''}`), td(fmt(cu)), td(sgn(cu).name),
+    td(`${i + 1}${c.h.system === 'Плацидус' ? (i === 0 ? ' (ASC)' : i === 9 ? ' (MC)' : '') : ''}`), td(fmt(cu)), td(sgn(cu).name),
   ]));
-  content.push(...secTable('Дома (Плацидус)',
+  if (c.h.warning) content.push({ text: c.h.warning, style: 'hint' });
+  content.push(...secTable(`Дома (${c.h.system || 'Плацидус'})`,
     { table: { headerRows: 1, widths: ['auto', '*', 'auto'], body: hRows }, layout: TABLE_LAYOUT },
   ));
 
@@ -435,10 +426,10 @@ export async function downloadPdf(c, cityName, svg) {
   content.push({ svg: RULE_SVG(150, 9), alignment: 'center', margin: [0, 16, 0, 16] });
   content.push({ text: 'Понравился разбор? Рассчитайте карту себе, партнёру или ребёнку — это бесплатно и без регистрации:', style: 'backText', alignment: 'center', margin: [70, 0, 70, 14] });
   content.push({ text: SITE_URL, link: SITE_URL, style: 'backLink', alignment: 'center' });
-  content.push({ text: 'Расчёт выполнен в браузере на основе Astronomy Engine (MIT). Хирон, Селена и Лилит — приближённые (≈). Материалы носят ознакомительный характер.', style: 'backNote', alignment: 'center', margin: [40, 18, 40, 0] });
+  content.push({ text: 'Расчёт выполнен в браузере на основе Astronomy Engine (MIT). Хирон — двухтельное приближение, Селена — условная модель (≈). Лилит — средний апогей, узел — осцулирующий. Материалы носят ознакомительный характер.', style: 'backNote', alignment: 'center', margin: [40, 18, 40, 0] });
 
   const fname = `natal-${(f.name || 'karta').replace(/[^\wа-яё-]+/gi, '_')}-${f.y}${String(f.m).padStart(2, '0')}${String(f.d).padStart(2, '0')}.pdf`;
-  window.pdfMake.createPdf({
+  const report = window.pdfMake.createPdf({
     pageSize: 'A4',
     pageMargins: [56, 64, 56, 58],
     background: () => pdfPageFrame(),
@@ -481,5 +472,11 @@ export async function downloadPdf(c, cityName, svg) {
       headR: { fontSize: 8, characterSpacing: 0.5, color: '#777' },
       foot: { fontSize: 7.5, characterSpacing: 2, color: '#555' },
     },
-  }).download(fname);
+  });
+  if (globalThis.AndroidBridge) {
+    await new Promise((resolve, reject) => {
+      try { report.getBase64(base64 => { AndroidBridge.saveFile(fname, 'application/pdf', base64); resolve(); }); }
+      catch (error) { reject(error); }
+    });
+  } else report.download(fname);
 }
